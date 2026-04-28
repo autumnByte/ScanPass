@@ -1954,30 +1954,29 @@
         }
 
         /* ── If running on Vercel / normal website ── */
-        fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            functionName: fnName,
-            args: args,
-          }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (onSuccess) onSuccess(data);
-          })
-          .catch((err) => {
-            console.error("[FETCH]", err);
-
-            if (onFail) {
-              onFail({
-                message: "Unable to connect to backend.",
-              });
-            }
-          });
-      }
+   // External deployed mode (Vercel)
+  fetch(API_URL, {
+    method: "POST",
+    mode: "cors",
+    redirect: "follow",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      functionName: fnName,
+      args: args
+    })
+  })
+  .then(res => res.text())
+  .then(text => {
+    const data = JSON.parse(text);
+    if (onSuccess) onSuccess(data);
+  })
+  .catch(err => {
+    console.error("[FETCH]", err);
+    if (onFail) onFail(err);
+  });
+}
 
       /* ══════════════════════════════════════════
    ERROR CODE → UI MESSAGE MAP
