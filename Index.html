@@ -1,0 +1,2818 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <base target="_top" />
+    <title>ScanPass-QR Based Digital ID & Entry Logger</title>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ═══════════════════════════ TOKENS ═══════════════════════════ */
+      :root {
+        --bg-void: #07070d;
+        --bg-deep: #0d0d1a;
+        --bg-surface: #111128;
+        --bg-card: rgba(17, 17, 40, 0.75);
+        --bg-glass: rgba(255, 255, 255, 0.03);
+
+        --purple-300: #c4b5fd;
+        --purple-400: #a78bfa;
+        --purple-500: #8b5cf6;
+        --purple-600: #7c3aed;
+        --purple-700: #6d28d9;
+        --purple-neon: #bf80ff;
+        --purple-glow: rgba(139, 92, 246, 0.35);
+
+        --green-400: #4ade80;
+        --green-500: #22c55e;
+        --red-400: #f87171;
+        --red-500: #ef4444;
+        --amber-400: #fbbf24;
+        --blue-400: #60a5fa;
+
+        --text-primary: #f0edff;
+        --text-secondary: rgba(192, 180, 240, 0.75);
+        --text-muted: rgba(140, 120, 200, 0.5);
+
+        --border-subtle: rgba(139, 92, 246, 0.13);
+        --border-glow: rgba(139, 92, 246, 0.45);
+
+        --font-display: "Syne", sans-serif;
+        --font-mono: "DM Mono", monospace;
+
+        --radius-sm: 10px;
+        --radius-md: 16px;
+        --radius-lg: 24px;
+        --radius-xl: 32px;
+        --shadow-card:
+          0 4px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        background: var(--bg-void);
+        min-height: 100%;
+        overflow-x: hidden;
+      }
+      body {
+        font-family: var(--font-display);
+        background: var(--bg-void);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        top: -20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 800px;
+        height: 600px;
+        pointer-events: none;
+        z-index: 0;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(109, 40, 217, 0.18) 0%,
+          rgba(76, 29, 149, 0.08) 40%,
+          transparent 70%
+        );
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ── TABS ── */
+      .tab-nav {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(7, 7, 13, 0.94);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border-subtle);
+        padding: 0 16px;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 14px 8px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .tab-btn svg {
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+      }
+      .tab-btn.active {
+        color: var(--purple-300);
+      }
+      .tab-btn.active::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--purple-500),
+          transparent
+        );
+        border-radius: 2px;
+      }
+
+      /* ── PAGES ── */
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+      }
+      .app-container {
+        position: relative;
+        z-index: 1;
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 0 16px 100px;
+      }
+
+      /* ── SECTION LABEL ── */
+      .section-label {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin: 20px 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section-label::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border-subtle);
+      }
+
+      /* ── CARD ── */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: var(--shadow-card);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 14px;
+      }
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(139, 92, 246, 0.4),
+          transparent
+        );
+      }
+
+      /* ── BUTTONS ── */
+      .btn {
+        padding: 13px 20px;
+        border: none;
+        border-radius: var(--radius-md);
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.3px;
+      }
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--purple-600),
+          var(--purple-700)
+        );
+        color: #fff;
+        box-shadow:
+          0 4px 20px rgba(139, 92, 246, 0.4),
+          0 1px 0 rgba(255, 255, 255, 0.1) inset;
+      }
+      .btn-primary:hover {
+        background: linear-gradient(
+          135deg,
+          var(--purple-500),
+          var(--purple-600)
+        );
+        transform: translateY(-1px);
+        box-shadow: 0 6px 28px rgba(139, 92, 246, 0.6);
+      }
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+      .btn-secondary {
+        background: rgba(139, 92, 246, 0.08);
+        color: var(--purple-400);
+        border: 1px solid var(--border-subtle);
+      }
+      .btn-secondary:hover {
+        background: rgba(139, 92, 246, 0.15);
+        border-color: var(--border-glow);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--border-subtle);
+        font-size: 12px;
+        padding: 8px 14px;
+      }
+      .btn-ghost:hover {
+        color: var(--text-secondary);
+        border-color: var(--border-glow);
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+      .btn-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* ── PILLS ── */
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 100px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      .pill-green {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--green-400);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .pill-red {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--red-400);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .pill-purple {
+        background: rgba(139, 92, 246, 0.12);
+        color: var(--purple-400);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+      .pill-amber {
+        background: rgba(251, 191, 36, 0.12);
+        color: var(--amber-400);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+      }
+
+      /* ── HEADER ── */
+      .header {
+        padding: 24px 0 18px;
+        text-align: center;
+      }
+      .logo-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(
+          135deg,
+          var(--purple-500),
+          var(--purple-700)
+        );
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+      }
+      .logo-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+      .logo-text {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(
+          135deg,
+          #e0d4ff 0%,
+          var(--purple-neon) 50%,
+          var(--purple-400) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .header-subtitle {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .badges {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .badge {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-subtle);
+        border-radius: 100px;
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        color: var(--text-secondary);
+        letter-spacing: 0.5px;
+      }
+      .badge-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--purple-400);
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(0.7);
+        }
+      }
+
+      /* ── MINI STATS ── */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .stat-tile {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+        backdrop-filter: blur(12px);
+        box-shadow: var(--shadow-card);
+        position: relative;
+        overflow: hidden;
+      }
+      .stat-tile::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(139, 92, 246, 0.3),
+          transparent
+        );
+      }
+      .stat-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+      }
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+      }
+      .stat-value.highlight {
+        color: var(--purple-400);
+      }
+      .stat-value.mono {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 400;
+      }
+
+      /* ── SCANNER ── */
+      .scanner-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-xl);
+        padding: 24px 20px;
+        backdrop-filter: blur(16px);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+      .scanner-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(139, 92, 246, 0.5),
+          transparent
+        );
+      }
+      .scanner-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .qr-frame-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        max-width: 300px;
+        margin: 0 auto 20px;
+      }
+      .qr-frame {
+        width: 100%;
+        height: 100%;
+        border-radius: var(--radius-lg);
+        background: rgba(0, 0, 0, 0.6);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border-subtle);
+      }
+      .qr-frame.scanning {
+        box-shadow:
+          0 0 0 1px var(--border-glow),
+          0 0 30px rgba(139, 92, 246, 0.2);
+      }
+
+      .corner {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        z-index: 10;
+      }
+      .corner-tl {
+        top: 10px;
+        left: 10px;
+        border-top: 2.5px solid var(--purple-500);
+        border-left: 2.5px solid var(--purple-500);
+        border-radius: 6px 0 0 0;
+      }
+      .corner-tr {
+        top: 10px;
+        right: 10px;
+        border-top: 2.5px solid var(--purple-500);
+        border-right: 2.5px solid var(--purple-500);
+        border-radius: 0 6px 0 0;
+      }
+      .corner-bl {
+        bottom: 10px;
+        left: 10px;
+        border-bottom: 2.5px solid var(--purple-500);
+        border-left: 2.5px solid var(--purple-500);
+        border-radius: 0 0 0 6px;
+      }
+      .corner-br {
+        bottom: 10px;
+        right: 10px;
+        border-bottom: 2.5px solid var(--purple-500);
+        border-right: 2.5px solid var(--purple-500);
+        border-radius: 0 0 6px 0;
+      }
+
+      .scan-line {
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--purple-neon),
+          transparent
+        );
+        box-shadow: 0 0 8px var(--purple-glow);
+        border-radius: 2px;
+        z-index: 8;
+        animation: scan-move 2s ease-in-out infinite;
+      }
+      @keyframes scan-move {
+        0%,
+        100% {
+          top: 15%;
+          opacity: 0.8;
+        }
+        50% {
+          top: 80%;
+          opacity: 1;
+        }
+      }
+
+      .scanner-idle {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        z-index: 5;
+      }
+      .idle-icon {
+        width: 56px;
+        height: 56px;
+        border: 2px solid var(--border-subtle);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+      }
+      .idle-text {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+      }
+
+      /* ── html5-qrcode cleanup ── */
+      #qr-reader,
+      #qr-reader-face {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #qr-reader video,
+      #qr-reader-face video {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+      }
+      #qr-reader img,
+      #qr-reader-face img,
+      #qr-reader button,
+      #qr-reader-face button,
+      #qr-reader__dashboard,
+      #qr-reader-face__dashboard {
+        display: none !important;
+      }
+
+      /* ── MODE TOGGLE ── */
+      .mode-toggle {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--radius-md);
+        padding: 4px;
+        border: 1px solid var(--border-subtle);
+      }
+      .mode-btn {
+        flex: 1;
+        padding: 9px 8px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        transition: all 0.2s;
+      }
+      .mode-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+      .mode-btn.active {
+        background: rgba(139, 92, 246, 0.18);
+        color: var(--purple-300);
+      }
+
+      /* ── FACE + QR ── */
+      .face-frame-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        max-width: 260px;
+        margin: 0 auto 12px;
+      }
+      .face-qr-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+      }
+      .face-qr-row .face-frame-wrap {
+        max-width: 120px;
+        flex-shrink: 0;
+        margin: 0;
+      }
+      .face-qr-row .qr-frame-wrap {
+        flex: 1;
+        margin: 0;
+      }
+      .face-frame {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        position: relative;
+        overflow: hidden;
+        border: 2px solid var(--border-subtle);
+      }
+      .face-frame.verifying {
+        border-color: var(--purple-500);
+        box-shadow:
+          0 0 0 4px rgba(139, 92, 246, 0.15),
+          0 0 30px rgba(139, 92, 246, 0.3);
+      }
+      .face-frame.verified {
+        border-color: var(--green-500);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+      }
+      #face-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      .face-scan-ring {
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 2px dashed rgba(139, 92, 246, 0.4);
+        animation: rotate-ring 4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes rotate-ring {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .face-overlay-msg {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        text-align: center;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        letter-spacing: 1px;
+      }
+
+      /* ── STATUS CARD ── */
+      .status-card {
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 14px;
+        backdrop-filter: blur(12px);
+        border: 1px solid transparent;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+      .status-card.state-idle {
+        background: var(--bg-card);
+        border-color: var(--border-subtle);
+        box-shadow: var(--shadow-card);
+      }
+      .status-card.state-processing {
+        background: rgba(139, 92, 246, 0.08);
+        border-color: rgba(139, 92, 246, 0.3);
+        box-shadow: 0 4px 32px rgba(139, 92, 246, 0.2);
+      }
+      .status-card.state-success {
+        background: rgba(34, 197, 94, 0.07);
+        border-color: rgba(34, 197, 94, 0.3);
+        box-shadow: 0 4px 32px rgba(34, 197, 94, 0.2);
+      }
+      .status-card.state-error {
+        background: rgba(239, 68, 68, 0.07);
+        border-color: rgba(239, 68, 68, 0.3);
+        box-shadow: 0 4px 32px rgba(239, 68, 68, 0.2);
+      }
+      .status-card.state-warning {
+        background: rgba(251, 191, 36, 0.07);
+        border-color: rgba(251, 191, 36, 0.3);
+        box-shadow: 0 4px 32px rgba(251, 191, 36, 0.15);
+      }
+      .status-inner {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .status-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: background 0.3s;
+      }
+      .state-idle .status-icon-wrap {
+        background: rgba(139, 92, 246, 0.12);
+      }
+      .state-processing .status-icon-wrap {
+        background: rgba(139, 92, 246, 0.18);
+      }
+      .state-success .status-icon-wrap {
+        background: rgba(34, 197, 94, 0.15);
+      }
+      .state-error .status-icon-wrap {
+        background: rgba(239, 68, 68, 0.15);
+      }
+      .state-warning .status-icon-wrap {
+        background: rgba(251, 191, 36, 0.15);
+      }
+      .status-icon {
+        width: 22px;
+        height: 22px;
+        transition: color 0.3s;
+      }
+      .state-idle .status-icon {
+        color: var(--purple-400);
+      }
+      .state-processing .status-icon {
+        color: var(--purple-neon);
+        animation: spin 1s linear infinite;
+      }
+      .state-success .status-icon {
+        color: var(--green-400);
+      }
+      .state-error .status-icon {
+        color: var(--red-400);
+      }
+      .state-warning .status-icon {
+        color: var(--amber-400);
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .status-content {
+        flex: 1;
+        min-width: 0;
+      }
+      .status-title {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 3px;
+        transition: color 0.3s;
+      }
+      .state-idle .status-title {
+        color: var(--text-secondary);
+      }
+      .state-processing .status-title {
+        color: var(--purple-300);
+      }
+      .state-success .status-title {
+        color: var(--green-400);
+      }
+      .state-error .status-title {
+        color: var(--red-400);
+      }
+      .state-warning .status-title {
+        color: var(--amber-400);
+      }
+      .status-message {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+      .user-result {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: none;
+      }
+      .user-result.visible {
+        display: block;
+      }
+      .user-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+      }
+      .user-email {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .action-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 5px 12px;
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .action-badge.in {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green-400);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .action-badge.out {
+        background: rgba(139, 92, 246, 0.15);
+        color: var(--purple-400);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+
+      /* ── DASHBOARD ── */
+      .dash-header {
+        padding: 22px 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .dash-title {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--purple-300);
+      }
+      .dash-sub {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 2px;
+        letter-spacing: 1px;
+      }
+
+      .dash-stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      @media (min-width: 400px) {
+        .dash-stat-grid {
+          grid-template-columns: 1fr 1fr 1fr 1fr;
+        }
+      }
+      .dash-stat {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 16px 14px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .dash-stat::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+      }
+      .dash-stat.purple::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--purple-500),
+          transparent
+        );
+      }
+      .dash-stat.green::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--green-500),
+          transparent
+        );
+      }
+      .dash-stat.red::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--red-500),
+          transparent
+        );
+      }
+      .dash-stat.amber::before {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--amber-400),
+          transparent
+        );
+      }
+      .ds-label {
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .ds-val {
+        font-size: 1.7rem;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        line-height: 1;
+      }
+      .dash-stat.purple .ds-val {
+        color: var(--purple-300);
+      }
+      .dash-stat.green .ds-val {
+        color: var(--green-400);
+      }
+      .dash-stat.red .ds-val {
+        color: var(--red-400);
+      }
+      .dash-stat.amber .ds-val {
+        color: var(--amber-400);
+      }
+
+      /* Skeleton shimmer */
+      .ds-val.loading,
+      .skeleton {
+        display: block;
+        height: 1.7rem;
+        border-radius: 6px;
+        background: linear-gradient(
+          90deg,
+          rgba(139, 92, 246, 0.08) 25%,
+          rgba(139, 92, 246, 0.18) 50%,
+          rgba(139, 92, 246, 0.08) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+
+      /* ── LOG LIST ── */
+      .log-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .log-item {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: border-color 0.2s;
+      }
+      .log-item:hover {
+        border-color: var(--border-glow);
+      }
+      .log-badge {
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        flex-shrink: 0;
+      }
+      .log-badge.IN {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--green-400);
+      }
+      .log-badge.OUT {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--red-400);
+      }
+      .log-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        flex: 1;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .log-time {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        text-align: right;
+        white-space: nowrap;
+      }
+      .log-uid {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-muted);
+      }
+      .empty-text {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 24px;
+        font-size: 0.85rem;
+      }
+
+      /* Error box — hidden by default */
+      .error-box {
+        display: none;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        color: var(--red-400);
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        line-height: 1.4;
+      }
+
+      /* ── REPORTS ── */
+      .report-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .report-period-btn {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-muted);
+        font-family: var(--font-display);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .report-period-btn.active {
+        background: rgba(139, 92, 246, 0.18);
+        border-color: rgba(139, 92, 246, 0.4);
+        color: var(--purple-300);
+      }
+      .report-table-wrap {
+        overflow-x: auto;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+      }
+      .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .report-table th {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--purple-300);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .report-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.05);
+        color: var(--text-secondary);
+        vertical-align: middle;
+      }
+      .report-table tr:last-child td {
+        border-bottom: none;
+      }
+      .report-table tr:hover td {
+        background: rgba(139, 92, 246, 0.04);
+      }
+
+      /* Bar chart */
+      .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 90px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .bar-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-width: 32px;
+      }
+      .bar {
+        width: 100%;
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+        transition: height 0.3s ease;
+      }
+      .in-bar {
+        background: rgba(34, 197, 94, 0.55);
+      }
+      .out-bar {
+        background: rgba(139, 92, 246, 0.55);
+      }
+      .bar-lbl {
+        font-family: var(--font-mono);
+        font-size: 8px;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      /* Export button */
+      .export-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: rgba(139, 92, 246, 0.1);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--purple-400);
+        font-family: var(--font-display);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        letter-spacing: 0.3px;
+      }
+      .export-btn:hover {
+        background: rgba(139, 92, 246, 0.2);
+        border-color: var(--border-glow);
+      }
+      .export-btn svg {
+        width: 13px;
+        height: 13px;
+      }
+
+      /* ── TOAST ── */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(17, 17, 40, 0.97);
+        border: 1px solid var(--border-subtle);
+        border-radius: 100px;
+        padding: 10px 22px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        backdrop-filter: blur(16px);
+        z-index: 9999;
+        opacity: 0;
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+        pointer-events: none;
+        white-space: nowrap;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* ── FOOTER ── */
+      .footer {
+        text-align: center;
+        padding: 24px 0 8px;
+      }
+      .footer-text {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+        line-height: 1.6;
+      }
+      .footer-highlight {
+        color: var(--purple-400);
+      }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 380px) {
+        .app-container {
+          padding: 0 12px 100px;
+        }
+        .scanner-card {
+          padding: 18px 14px;
+        }
+        .qr-frame-wrap {
+          max-width: 260px;
+        }
+        .logo-text {
+          font-size: 22px;
+        }
+        .tab-btn {
+          font-size: 10px;
+          padding: 12px 4px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── TABS ── -->
+    <nav class="tab-nav">
+      <button
+        class="tab-btn active"
+        id="tab-scanner"
+        onclick="switchTab('scanner')"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <path d="M14 14h3v3M17 17h4M14 21h3" /></svg
+        >Scanner
+      </button>
+      <button
+        class="tab-btn"
+        id="tab-dashboard"
+        onclick="switchTab('dashboard')"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect x="3" y="3" width="7" height="9" rx="1" />
+          <rect x="14" y="3" width="7" height="5" rx="1" />
+          <rect x="14" y="12" width="7" height="9" rx="1" />
+          <rect x="3" y="16" width="7" height="5" rx="1" /></svg
+        >Dashboard
+      </button>
+      <button class="tab-btn" id="tab-reports" onclick="switchTab('reports')">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" /></svg
+        >Reports
+      </button>
+    </nav>
+
+    <!-- ══════════════ TAB: SCANNER ══════════════ -->
+    <div class="page active" id="page-scanner">
+      <div class="app-container">
+        <header class="header">
+          <div class="logo-wrap">
+            <div class="logo-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <path d="M14 14h3v3M17 17h4M14 21h3" />
+              </svg>
+            </div>
+            <div class="logo-text">ScanPass</div>
+          </div>
+          <div class="header-subtitle">ID Verification Portal</div>
+          <div class="badges">
+            <div class="badge"><span class="badge-dot"></span>v3.1</div>
+            <div class="badge"><span class="badge-dot"></span>Real-Time</div>
+            <div class="badge"><span class="badge-dot"></span>Smart IN/OUT</div>
+          </div>
+        </header>
+
+        <!-- Mini stats -->
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-label">Current Time</div>
+            <div class="stat-value mono highlight" id="stat-time">--:--:--</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Scans Today</div>
+            <div class="stat-value highlight" id="stat-scans">–</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Present Now</div>
+            <div class="stat-value" id="stat-present">–</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Portal</div>
+            <div
+              class="stat-value mono"
+              style="
+                font-size: 11px;
+                padding-top: 2px;
+                color: var(--purple-400);
+              "
+              id="stat-portal"
+            >
+              AntBox
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode toggle -->
+        <div class="mode-toggle">
+          <button
+            class="mode-btn active"
+            id="mode-qr-btn"
+            onclick="setMode('qr')"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 14h3v3M17 17h4M14 21h3" /></svg
+            >QR Only
+          </button>
+          <button class="mode-btn" id="mode-face-btn" onclick="setMode('face')">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg
+            >Face + QR
+          </button>
+        </div>
+
+        <!-- Scanner Card -->
+        <div class="scanner-card" id="scanner-card">
+          <!-- QR-ONLY MODE -->
+          <div id="qr-mode-ui">
+            <div class="scanner-label">◈ QR VERIFICATION SCANNER ◈</div>
+            <div class="qr-frame-wrap">
+              <div class="qr-frame" id="qr-frame">
+                <div class="corner corner-tl"></div>
+                <div class="corner corner-tr"></div>
+                <div class="corner corner-bl"></div>
+                <div class="corner corner-br"></div>
+                <div class="scan-line" id="scan-line"></div>
+                <div id="qr-reader"></div>
+                <div class="scanner-idle" id="scanner-idle">
+                  <div class="idle-icon">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      width="28"
+                      height="28"
+                    >
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <path d="M14 14h3v3M17 17h4M14 21h3" />
+                    </svg>
+                  </div>
+                  <div class="idle-text">Camera is off</div>
+                </div>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button
+                class="btn btn-primary"
+                id="btn-start"
+                onclick="startCamera()"
+              >
+                Enable Camera
+              </button>
+              <button
+                class="btn btn-secondary hidden"
+                id="btn-stop"
+                onclick="stopCamera()"
+              >
+                Stop
+              </button>
+            </div>
+          </div>
+
+          <!-- FACE + QR MODE -->
+          <div id="face-mode-ui" class="hidden">
+            <div class="scanner-label">◈ FACE + QR HYBRID VERIFICATION ◈</div>
+
+            <!-- Step 1: face capture -->
+            <div id="face-step-1">
+              <div class="face-frame-wrap">
+                <div class="face-frame" id="face-frame">
+                  <video id="face-video" autoplay muted playsinline></video>
+                  <div class="face-scan-ring"></div>
+                </div>
+              </div>
+              <div class="face-overlay-msg" id="face-msg">
+                Position face in circle — auto-captures in 3s
+              </div>
+              <canvas id="face-canvas" style="display: none"></canvas>
+              <div class="btn-group">
+                <button
+                  class="btn btn-primary"
+                  id="btn-face-start"
+                  onclick="startFaceCapture()"
+                >
+                  Start Verification
+                </button>
+                <button
+                  class="btn btn-secondary hidden"
+                  id="btn-face-stop"
+                  onclick="cancelFaceCapture()"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: face preview + QR -->
+            <div id="face-step-2" class="hidden">
+              <div
+                class="pill pill-green"
+                style="margin: 0 auto 14px; width: fit-content"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                >
+                  <polyline points="20 6 9 17 4 12" /></svg
+                >Face Captured — Scan Your QR
+              </div>
+              <div class="face-qr-row">
+                <div class="face-frame-wrap">
+                  <div class="face-frame verified">
+                    <canvas
+                      id="face-preview-canvas"
+                      style="
+                        width: 100%;
+                        height: 100%;
+                        border-radius: 50%;
+                        object-fit: cover;
+                        display: block;
+                      "
+                    ></canvas>
+                  </div>
+                </div>
+                <div class="qr-frame-wrap">
+                  <div class="qr-frame scanning">
+                    <div class="corner corner-tl"></div>
+                    <div class="corner corner-tr"></div>
+                    <div class="corner corner-bl"></div>
+                    <div class="corner corner-br"></div>
+                    <div class="scan-line"></div>
+                    <div id="qr-reader-face"></div>
+                  </div>
+                </div>
+              </div>
+              <button
+                class="btn btn-ghost"
+                style="width: 100%; margin-top: 8px"
+                onclick="resetFaceMode()"
+              >
+                ↩ Restart
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- /scanner-card -->
+
+        <!-- Status Card -->
+        <div class="status-card state-idle" id="status-card">
+          <div class="status-inner">
+            <div class="status-icon-wrap">
+              <svg
+                class="status-icon"
+                id="status-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4l3 3" />
+              </svg>
+            </div>
+            <div class="status-content">
+              <div class="status-title" id="status-title">Ready to Scan</div>
+              <div class="status-message" id="status-msg">
+                Enable camera to start scanning QR codes
+              </div>
+              <div class="user-result" id="user-result">
+                <div class="user-name" id="result-name">—</div>
+                <div class="user-email" id="result-email">—</div>
+                <div class="action-badge" id="result-badge">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <div class="footer-text">
+            Built with <span class="footer-highlight">Google Apps Script</span
+            ><br />ScanPass v3.1 · AntBox Secure Attendance
+          </div>
+        </footer>
+      </div>
+    </div>
+    <!-- /page-scanner -->
+
+    <!-- ══════════════ TAB: DASHBOARD ══════════════ -->
+    <div class="page" id="page-dashboard">
+      <div class="app-container">
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">Dashboard</div>
+            <div class="dash-sub" id="dash-portal-name">Admin Overview</div>
+          </div>
+          <button class="btn btn-ghost" onclick="loadDashboard()">
+            ↻ Refresh
+          </button>
+        </div>
+
+        <div class="error-box" id="dash-error"></div>
+
+        <div class="section-label">Live Stats</div>
+        <div class="dash-stat-grid">
+          <div class="dash-stat purple">
+            <div class="ds-label">Total Users</div>
+            <div class="ds-val" id="ds-total">—</div>
+          </div>
+          <div class="dash-stat green">
+            <div class="ds-label">Present Now</div>
+            <div class="ds-val" id="ds-present">—</div>
+          </div>
+          <div class="dash-stat red">
+            <div class="ds-label">Absent</div>
+            <div class="ds-val" id="ds-absent">—</div>
+          </div>
+          <div class="dash-stat amber">
+            <div class="ds-label">Scans Today</div>
+            <div class="ds-val" id="ds-scans">—</div>
+          </div>
+        </div>
+
+        <div class="section-label">Recent Activity</div>
+        <div class="log-list" id="dash-log-list">
+          <div class="empty-text">Loading activity…</div>
+        </div>
+
+        <footer class="footer" style="margin-top: 20px">
+          <div class="footer-text">
+            ScanPass v3.1 · <span class="footer-highlight">AntBox</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+    <!-- /page-dashboard -->
+
+    <!-- ══════════════ TAB: REPORTS ══════════════ -->
+    <div class="page" id="page-reports">
+      <div class="app-container">
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">Reports</div>
+            <div class="dash-sub">Daily &amp; Weekly Analytics</div>
+          </div>
+          <button class="btn btn-ghost" onclick="loadReport()">
+            ↻ Refresh
+          </button>
+        </div>
+
+        <div class="section-label">Time Period</div>
+        <div class="report-controls">
+          <button
+            class="report-period-btn active"
+            id="rp-today"
+            onclick="setPeriod('today')"
+          >
+            Today
+          </button>
+          <button
+            class="report-period-btn"
+            id="rp-week"
+            onclick="setPeriod('week')"
+          >
+            This Week
+          </button>
+          <button
+            class="report-period-btn"
+            id="rp-month"
+            onclick="setPeriod('month')"
+          >
+            This Month
+          </button>
+        </div>
+
+        <div class="dash-stat-grid" style="grid-template-columns: 1fr 1fr 1fr">
+          <div class="dash-stat green">
+            <div class="ds-label">Total IN</div>
+            <div class="ds-val" id="rp-in">—</div>
+          </div>
+          <div class="dash-stat red">
+            <div class="ds-label">Total OUT</div>
+            <div class="ds-val" id="rp-out">—</div>
+          </div>
+          <div class="dash-stat purple">
+            <div class="ds-label">Unique Users</div>
+            <div class="ds-val" id="rp-unique">—</div>
+          </div>
+        </div>
+
+        <div class="section-label">Daily Scan Activity</div>
+        <div class="card" style="padding: 16px">
+          <div
+            style="
+              display: flex;
+              gap: 12px;
+              margin-bottom: 8px;
+              font-family: var(--font-mono);
+              font-size: 10px;
+              color: var(--text-muted);
+            "
+          >
+            <span style="display: flex; align-items: center; gap: 4px"
+              ><span
+                style="
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 2px;
+                  background: rgba(34, 197, 94, 0.7);
+                  display: inline-block;
+                "
+              ></span
+              >IN</span
+            >
+            <span style="display: flex; align-items: center; gap: 4px"
+              ><span
+                style="
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 2px;
+                  background: rgba(139, 92, 246, 0.7);
+                  display: inline-block;
+                "
+              ></span
+              >OUT</span
+            >
+          </div>
+          <div class="bar-chart" id="bar-chart">
+            <div
+              class="empty-text"
+              style="padding: 0; width: 100%; font-size: 11px"
+            >
+              Loading chart…
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Log Details</div>
+        <div class="card" style="padding: 0">
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Action</th>
+                  <th>Time</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody id="report-tbody">
+                <tr>
+                  <td colspan="4" class="empty-text">Loading…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div
+            style="
+              padding: 12px 14px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              flex-wrap: wrap;
+              gap: 8px;
+            "
+          >
+            <span
+              style="
+                font-family: var(--font-mono);
+                font-size: 10px;
+                color: var(--text-muted);
+              "
+              id="report-count"
+              >0 records</span
+            >
+            <button class="export-btn" onclick="exportCSV()">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" /></svg
+              >Export CSV
+            </button>
+          </div>
+        </div>
+
+        <footer class="footer" style="margin-top: 20px">
+          <div class="footer-text">
+            ScanPass v3.1 · <span class="footer-highlight">AntBox</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+    <!-- /page-reports -->
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ═══════════════════════════════════════════
+         JAVASCRIPT — single unified block, no duplicates
+    ═══════════════════════════════════════════ -->
+    <script>
+      "use strict";
+
+      /* ══════════════════════════════════════════
+   STATE — single source of truth
+══════════════════════════════════════════ */
+      const APP = {
+        qrScanner: null, // Html5Qrcode instance — QR-only mode
+        faceScanner: null, // Html5Qrcode instance — Face+QR step 2
+        faceStream: null, // MediaStream — front camera
+        faceImageData: null, // base64 JPEG from front camera
+
+        scanning: false, // rear QR camera active?
+        scanLocked: false, // debounce — blocks re-entry while processing
+
+        activeTab: "scanner",
+        scansSession: 0,
+        mode: "qr", // 'qr' | 'face'
+        currentPeriod: "today",
+      };
+
+      /* ══════════════════════════════════════════
+   ICON SVG PATHS
+══════════════════════════════════════════ */
+      const ICONS = {
+        idle: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>',
+        spin: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+        check:
+          '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+        x: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+        warn: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/>',
+        processing: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+      };
+
+      /* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+      const $ = (id) => document.getElementById(id);
+
+      // XSS-safe HTML escape
+      function esc(str) {
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function formatTimestamp(ts) {
+        if (!ts) return "—";
+        const s = String(ts);
+        // Trim seconds from "dd/MM/yyyy HH:mm:ss"
+        if (/\d{2}\/\d{2}\/\d{4}/.test(s))
+          return s.replace(
+            /(\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2}):\d{2}/,
+            "$1 $2",
+          );
+        try {
+          const d = new Date(s);
+          return isNaN(d)
+            ? s
+            : d.toLocaleString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+        } catch (_) {
+          return s;
+        }
+      }
+
+      function getDevice() {
+        const ua = navigator.userAgent;
+        const type = /Mobile|Android|iPhone|iPad/i.test(ua)
+          ? "Mobile"
+          : "Desktop";
+        const os = /Android/i.test(ua)
+          ? "Android"
+          : /iPhone|iPad/i.test(ua)
+            ? "iOS"
+            : /Windows/i.test(ua)
+              ? "Win"
+              : /Mac/i.test(ua)
+                ? "Mac"
+                : "Other";
+        return type + " · " + os;
+      }
+
+      let _toastTimer = null;
+      function showToast(msg, duration) {
+        const t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(
+          () => t.classList.remove("show"),
+          duration || 2800,
+        );
+      }
+
+      /* ══════════════════════════════════════════
+   BACKEND BRIDGE — Works on Vercel + GAS
+   Uses google.script.run inside Apps Script
+   Uses fetch() outside Apps Script
+══════════════════════════════════════════ */
+
+      const API_URL =
+        "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
+
+      function callBackend(fnName, args = [], onSuccess, onFail) {
+        /* ── If running inside Apps Script HTMLService ── */
+        if (
+          typeof google !== "undefined" &&
+          google.script &&
+          google.script.run
+        ) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onFail || ((e) => console.error("[GAS]", e)))
+            [fnName].apply(google.script.run, args);
+
+          return;
+        }
+
+        /* ── If running on Vercel / normal website ── */
+        fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            functionName: fnName,
+            args: args,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (onSuccess) onSuccess(data);
+          })
+          .catch((err) => {
+            console.error("[FETCH]", err);
+
+            if (onFail) {
+              onFail({
+                message: "Unable to connect to backend.",
+              });
+            }
+          });
+      }
+
+      /* ══════════════════════════════════════════
+   ERROR CODE → UI MESSAGE MAP
+══════════════════════════════════════════ */
+      const ERROR_MAP = {
+        INVALID_QR: {
+          title: "Invalid QR Code",
+          msg: "This QR is not registered in the system.",
+          state: "error",
+        },
+        DUPLICATE_BLOCKED: {
+          title: "Duplicate Blocked",
+          msg: "Already scanned recently. Wait before re-scanning.",
+          state: "warning",
+        },
+        USER_NOT_FOUND: {
+          title: "User Not Found",
+          msg: "No matching user in the database.",
+          state: "error",
+        },
+        CAMERA_DENIED: {
+          title: "Camera Access Denied",
+          msg: "Allow camera in browser settings, then reload.",
+          state: "error",
+        },
+        NO_CAMERA: {
+          title: "No Camera Found",
+          msg: "No camera device detected on this device.",
+          state: "error",
+        },
+        NETWORK_ERROR: {
+          title: "Network Error",
+          msg: "Could not reach server. Check connection.",
+          state: "error",
+        },
+        SERVER_BUSY: {
+          title: "Server Busy",
+          msg: "Too many concurrent scans. Retry in a moment.",
+          state: "warning",
+        },
+        CONFIG_ERROR: {
+          title: "Config Error",
+          msg: "Spreadsheet sheets not configured correctly.",
+          state: "error",
+        },
+        SERVER_ERROR: {
+          title: "Server Error",
+          msg: "Internal server error. Contact admin.",
+          state: "error",
+        },
+        UNKNOWN_ERROR: {
+          title: "Unknown Error",
+          msg: "An unexpected error occurred.",
+          state: "error",
+        },
+      };
+
+      function getErrorUI(code) {
+        return ERROR_MAP[code] || ERROR_MAP.UNKNOWN_ERROR;
+      }
+
+      /* ══════════════════════════════════════════
+   CLOCK
+══════════════════════════════════════════ */
+      setInterval(() => {
+        const el = $("stat-time");
+        if (el)
+          el.textContent = new Date().toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+      }, 1000);
+
+      /* ══════════════════════════════════════════
+   TABS
+══════════════════════════════════════════ */
+      function switchTab(tab) {
+        if (APP.activeTab === tab) return;
+
+        // Clean up cameras on leaving scanner tab
+        if (APP.activeTab === "scanner") {
+          stopCamera();
+          resetFaceMode();
+        }
+
+        APP.activeTab = tab;
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        $("page-" + tab).classList.add("active");
+        $("tab-" + tab).classList.add("active");
+
+        if (tab === "dashboard") loadDashboard();
+        if (tab === "reports") loadReport();
+      }
+
+      /* ══════════════════════════════════════════
+   STATUS CARD
+══════════════════════════════════════════ */
+      function setStatus(state, title, msg) {
+        $("status-card").className = "status-card state-" + state;
+        $("status-icon").innerHTML = ICONS[state] || ICONS.idle;
+        $("status-title").textContent = title;
+        $("status-msg").textContent = msg;
+        $("user-result").classList.remove("visible");
+      }
+
+      function showUserResult(name, email, action) {
+        $("result-name").textContent = name || "—";
+        $("result-email").textContent = email || "—";
+        const b = $("result-badge");
+        b.textContent = action === "IN" ? "✓ Marked IN" : "✓ Marked OUT";
+        b.className = "action-badge " + (action === "IN" ? "in" : "out");
+        $("user-result").classList.add("visible");
+      }
+
+      /* ══════════════════════════════════════════
+   MODE TOGGLE
+══════════════════════════════════════════ */
+      function setMode(mode) {
+        if (APP.mode === mode) return;
+        APP.mode = mode;
+        stopCamera();
+        resetFaceMode();
+        $("mode-qr-btn").classList.toggle("active", mode === "qr");
+        $("mode-face-btn").classList.toggle("active", mode === "face");
+        $("qr-mode-ui").classList.toggle("hidden", mode !== "qr");
+        $("face-mode-ui").classList.toggle("hidden", mode !== "face");
+        setStatus(
+          "idle",
+          "Ready to Scan",
+          mode === "face"
+            ? "Press Start — face is captured first, then scan QR"
+            : "Enable camera to start scanning",
+        );
+      }
+
+      /* ══════════════════════════════════════════
+   QR-ONLY SCANNER
+══════════════════════════════════════════ */
+      function startCamera() {
+        $("btn-start").disabled = true;
+        setStatus(
+          "processing",
+          "Starting Camera…",
+          "Requesting camera permission",
+        );
+
+        if (APP.qrScanner) {
+          APP.qrScanner.clear();
+          APP.qrScanner = null;
+        }
+
+        APP.qrScanner = new Html5Qrcode("qr-reader");
+
+        Html5Qrcode.getCameras()
+          .then((cameras) => {
+            if (!cameras || !cameras.length) {
+              throw { name: "NO_CAMERA" };
+            }
+
+            /* Prefer real cameras, avoid OBS / virtual cams */
+            const preferred = cameras.find(
+              (c) =>
+                !/obs|virtual|snap|manycam/i.test(c.label) &&
+                /back|rear|environment|integrated|webcam|camera/i.test(c.label),
+            );
+
+            const fallback = cameras.find(
+              (c) => !/obs|virtual|snap|manycam/i.test(c.label),
+            );
+
+            const camId = preferred?.id || fallback?.id || cameras[0].id;
+
+            return APP.qrScanner.start(
+              camId,
+              {
+                fps: 15,
+                qrbox: { width: 220, height: 220 },
+                aspectRatio: 1.0,
+                disableFlip: false,
+              },
+              onQRSuccess,
+              () => {},
+            );
+          })
+
+          .then(() => {
+            APP.scanning = true;
+
+            $("scanner-idle").style.display = "none";
+            $("qr-frame").classList.add("scanning");
+            $("btn-start").classList.add("hidden");
+            $("btn-stop").classList.remove("hidden");
+            $("btn-start").disabled = false;
+
+            setStatus(
+              "processing",
+              "Scanning…",
+              "Align QR code within the frame",
+            );
+          })
+
+          .catch((err) => {
+            const isCameraError = /Permission|NotAllowed/i.test(String(err));
+
+            const isNoCam = err?.name === "NO_CAMERA";
+
+            const code = isCameraError
+              ? "CAMERA_DENIED"
+              : isNoCam
+                ? "NO_CAMERA"
+                : "UNKNOWN_ERROR";
+
+            const ui = getErrorUI(code);
+
+            setStatus(ui.state, ui.title, ui.msg);
+            showToast("✗ " + ui.title);
+
+            resetQRButtons();
+          });
+      }
+
+      function stopCamera() {
+        if (!APP.qrScanner || !APP.scanning) return;
+        APP.qrScanner
+          .stop()
+          .then(() => {
+            APP.scanning = false;
+            APP.scanLocked = false;
+            $("scanner-idle").style.display = "";
+            $("qr-frame").classList.remove("scanning");
+            $("btn-stop").classList.add("hidden");
+            $("btn-start").classList.remove("hidden");
+            setStatus(
+              "idle",
+              "Ready to Scan",
+              "Enable camera to start scanning QR codes",
+            );
+          })
+          .catch(() => {
+            APP.scanning = false;
+          });
+      }
+
+      function resetQRButtons() {
+        $("btn-start").disabled = false;
+        $("btn-start").classList.remove("hidden");
+        $("btn-stop").classList.add("hidden");
+      }
+
+      /* ══════════════════════════════════════════
+   QR DECODE — shared callback for both modes
+   scanLocked prevents double-fire on fast cameras
+══════════════════════════════════════════ */
+      function onQRSuccess(decodedText) {
+        if (APP.scanLocked) return;
+        APP.scanLocked = true;
+
+        let userId = decodedText;
+        let secretKey = "";
+
+        // Try to parse JSON payload: { uid, key, portal, v }
+        try {
+          const decoded = decodeURIComponent(decodedText);
+          const parsed = JSON.parse(decoded);
+          if (parsed && parsed.uid) {
+            userId = parsed.uid;
+            secretKey = parsed.key || "";
+          }
+        } catch (_) {
+          // Plain text QR — use as-is
+        }
+
+        if (!userId || !String(userId).trim()) {
+          setStatus(
+            "error",
+            "Invalid QR",
+            "Could not read user ID from QR code.",
+          );
+          unlockAfter(2000);
+          return;
+        }
+
+        setStatus("processing", "Verifying…", "Processing ID: " + userId);
+
+        callBackend(
+          "scanEntry",
+          [userId.trim(), secretKey, getDevice(), APP.faceImageData || null],
+          handleScanResult,
+          handleScanError,
+        );
+      }
+
+      /* ══════════════════════════════════════════
+   SCAN RESULT HANDLERS
+══════════════════════════════════════════ */
+      function unlockAfter(ms) {
+        setTimeout(() => {
+          APP.scanLocked = false;
+        }, ms);
+      }
+
+      function resumeScanning(delay) {
+        if (APP.mode === "qr" && APP.scanning) {
+          setTimeout(() => {
+            if (APP.scanning)
+              setStatus(
+                "processing",
+                "Scanning…",
+                "Align QR code within the frame",
+              );
+          }, delay);
+        }
+      }
+
+      function handleScanResult(result) {
+        if (!result) {
+          const ui = getErrorUI("NETWORK_ERROR");
+          setStatus(ui.state, ui.title, ui.msg);
+          unlockAfter(2000);
+          return;
+        }
+
+        const code = result.code || "";
+
+        if (code === "IN" || code === "OUT") {
+          APP.scansSession++;
+          if (result.data) {
+            if (result.data.scansToday !== undefined)
+              $("stat-scans").textContent = result.data.scansToday;
+            if (result.data.presentNow !== undefined)
+              $("stat-present").textContent = result.data.presentNow;
+          }
+          setStatus(
+            "success",
+            code === "IN" ? "✓ Entry Logged – IN" : "✓ Exit Logged – OUT",
+            result.message || "",
+          );
+          showUserResult(result.data?.name, result.data?.email, code);
+          showToast((result.data?.name || "User") + " → " + code);
+
+          if (APP.mode === "face") {
+            setTimeout(resetFaceMode, 3500);
+          } else {
+            unlockAfter(3000);
+            resumeScanning(3500);
+          }
+          return;
+        }
+
+        // Error / warning codes
+        const ui = getErrorUI(code);
+        setStatus(ui.state, ui.title, result.message || ui.msg);
+        showToast((ui.state === "warning" ? "⚠ " : "✗ ") + ui.title);
+
+        if (code === "DUPLICATE_BLOCKED" || code === "SERVER_BUSY") {
+          unlockAfter(2000);
+          resumeScanning(2500);
+        } else {
+          unlockAfter(2000);
+          resumeScanning(2500);
+        }
+      }
+
+      function handleScanError(err) {
+        const ui = getErrorUI("NETWORK_ERROR");
+        setStatus(
+          ui.state,
+          ui.title,
+          "Failed to reach server: " + (err?.message || err),
+        );
+        showToast("✗ Network Error");
+        unlockAfter(0);
+        resumeScanning(3000);
+      }
+
+      /* ══════════════════════════════════════════
+   FACE VERIFY MODE — FIXED & CLEAN VERSION
+   - Real capture validation
+   - No fake “Face Captured”
+   - OBS / virtual cam avoided
+   - Removes second QR scan step
+   - Uses already scanned QR / user session
+   - Better reset / cancel flow
+══════════════════════════════════════════ */
+
+      /* START FACE CAPTURE */
+      function startFaceCapture() {
+        $("btn-face-start").disabled = true;
+
+        setStatus(
+          "processing",
+          "Starting Camera…",
+          "Opening front camera for identity snapshot",
+        );
+
+        navigator.mediaDevices
+          .getUserMedia({
+            video: {
+              facingMode: "user",
+              width: { ideal: 480 },
+              height: { ideal: 480 },
+            },
+            audio: false,
+          })
+
+          .then((stream) => {
+            APP.faceStream = stream;
+
+            const video = $("face-video");
+            video.srcObject = stream;
+            video.play();
+
+            $("face-frame").className = "face-frame verifying";
+            $("face-msg").textContent = "Hold still — capturing in 3 seconds…";
+
+            $("btn-face-start").classList.add("hidden");
+            $("btn-face-stop").classList.remove("hidden");
+
+            setStatus(
+              "processing",
+              "Face Camera Active",
+              "Keep face centred inside the circle",
+            );
+
+            setTimeout(() => {
+              if (!APP.faceStream) return;
+
+              captureFaceFrame(video);
+            }, 3000);
+          })
+
+          .catch((err) => {
+            const isDenied = /Permission|NotAllowed/i.test(String(err));
+
+            const ui = getErrorUI(isDenied ? "CAMERA_DENIED" : "UNKNOWN_ERROR");
+
+            setStatus(ui.state, ui.title, ui.msg);
+            showToast("✗ " + ui.title);
+
+            $("btn-face-start").disabled = false;
+          });
+      }
+
+      /* CAPTURE FRAME */
+      function captureFaceFrame(video) {
+        try {
+          if (!video.videoWidth || !video.videoHeight) {
+            throw new Error("No live video feed");
+          }
+
+          const canvas = $("face-canvas");
+          const ctx = canvas.getContext("2d");
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          ctx.drawImage(video, 0, 0);
+
+          const imgData = canvas.toDataURL("image/jpeg", 0.8);
+
+          /* Validate image exists */
+          if (!imgData || imgData.length < 5000) {
+            throw new Error("Blank capture");
+          }
+
+          APP.faceImageData = imgData;
+
+          /* Show preview */
+          const preview = $("face-preview-canvas");
+          preview.width = canvas.width;
+          preview.height = canvas.height;
+
+          preview.getContext("2d").drawImage(canvas, 0, 0);
+
+          stopFaceStream();
+
+          $("face-frame").className = "face-frame success";
+          $("face-msg").textContent = "Identity snapshot captured successfully";
+
+          setStatus(
+            "success",
+            "Face Captured",
+            "Verification image saved successfully",
+          );
+
+          showToast("✓ Identity Snapshot Ready");
+
+          $("btn-face-stop").classList.add("hidden");
+          $("btn-face-start").classList.remove("hidden");
+          $("btn-face-start").disabled = false;
+          $("btn-face-start").textContent = "Recapture";
+
+          /* IMPORTANT:
+       No second QR scan here.
+       Use already scanned QR flow elsewhere.
+    */
+        } catch (err) {
+          APP.faceImageData = null;
+
+          $("face-frame").className = "face-frame";
+          $("face-msg").textContent = "Could not capture image. Try again.";
+
+          setStatus(
+            "error",
+            "Capture Failed",
+            "Please ensure face is visible and retry.",
+          );
+
+          showToast("✗ Capture Failed");
+
+          $("btn-face-start").disabled = false;
+          $("btn-face-start").classList.remove("hidden");
+          $("btn-face-stop").classList.add("hidden");
+
+          stopFaceStream();
+        }
+      }
+
+      /* CANCEL */
+      function cancelFaceCapture() {
+        stopFaceStream();
+
+        APP.faceImageData = null;
+
+        $("face-frame").className = "face-frame";
+
+        $("face-msg").textContent =
+          "Position face in circle — auto-captures in 3s";
+
+        $("btn-face-start").disabled = false;
+        $("btn-face-start").classList.remove("hidden");
+        $("btn-face-stop").classList.add("hidden");
+
+        $("btn-face-start").textContent = "Start Face Verify";
+
+        setStatus("idle", "Ready", "Start face verification when needed");
+      }
+
+      /* STOP STREAM */
+      function stopFaceStream() {
+        if (APP.faceStream) {
+          APP.faceStream.getTracks().forEach((t) => t.stop());
+          APP.faceStream = null;
+        }
+
+        const video = $("face-video");
+
+        if (video) {
+          video.pause();
+          video.srcObject = null;
+        }
+      }
+
+      /* RESET MODE */
+      function resetFaceMode() {
+        stopFaceStream();
+
+        APP.faceImageData = null;
+        APP.scanLocked = false;
+
+        $("face-frame").className = "face-frame";
+
+        $("face-msg").textContent =
+          "Position face in circle — auto-captures in 3s";
+
+        $("btn-face-start").disabled = false;
+        $("btn-face-start").classList.remove("hidden");
+        $("btn-face-stop").classList.add("hidden");
+
+        $("btn-face-start").textContent = "Start Face Verify";
+
+        setStatus("idle", "Ready", "Face verification available");
+      }
+
+      /* ══════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════ */
+      const DASH_IDS = ["ds-total", "ds-present", "ds-absent", "ds-scans"];
+
+      function loadDashboard() {
+        // Skeleton state
+        DASH_IDS.forEach((id) => {
+          $(id).textContent = "";
+          $(id).classList.add("loading");
+        });
+        $("dash-log-list").innerHTML = '<div class="empty-text">Loading…</div>';
+
+        const errBox = $("dash-error");
+        errBox.style.display = "none";
+        errBox.textContent = "";
+
+        callBackend(
+          "getDashboardStats",
+          [],
+          function (data) {
+            DASH_IDS.forEach((id) => $(id).classList.remove("loading"));
+
+            if (!data || !data.success) {
+              errBox.textContent =
+                "⚠ " + (data?.error || "Failed to load dashboard.");
+              errBox.style.display = "block";
+              DASH_IDS.forEach((id) => ($(id).textContent = "—"));
+              $("dash-log-list").innerHTML =
+                '<div class="empty-text">Could not load activity.</div>';
+              return;
+            }
+
+            $("ds-total").textContent = data.totalUsers ?? 0;
+            $("ds-present").textContent = data.presentNow ?? 0;
+            $("ds-absent").textContent = data.absentNow ?? 0;
+            $("ds-scans").textContent = data.scansToday ?? 0;
+
+            // Sync scanner mini-stats
+            $("stat-scans").textContent = data.scansToday ?? 0;
+            $("stat-present").textContent = data.presentNow ?? 0;
+
+            if (data.portalName) {
+              $("stat-portal").textContent = data.portalName;
+              $("dash-portal-name").textContent = data.portalName + " · Admin";
+            }
+
+            const logs = data.recentLogs || [];
+            if (!logs.length) {
+              $("dash-log-list").innerHTML =
+                '<div class="empty-text">No activity logged yet.</div>';
+              return;
+            }
+
+            // Build DOM fragment — single reflow
+            const frag = document.createDocumentFragment();
+            logs.forEach((log) => {
+              const action = String(log.action || "")
+                .trim()
+                .toUpperCase();
+              const div = document.createElement("div");
+              div.className = "log-item";
+              div.innerHTML =
+                '<span class="log-badge ' +
+                action +
+                '">' +
+                action +
+                "</span>" +
+                '<div style="flex:1;min-width:0">' +
+                '<div class="log-name">' +
+                esc(log.name) +
+                "</div>" +
+                '<div class="log-uid">' +
+                esc(log.userId) +
+                "</div>" +
+                "</div>" +
+                '<div class="log-time">' +
+                formatTimestamp(log.timestamp) +
+                "</div>";
+              frag.appendChild(div);
+            });
+            $("dash-log-list").innerHTML = "";
+            $("dash-log-list").appendChild(frag);
+          },
+          function (err) {
+            DASH_IDS.forEach((id) => {
+              $(id).classList.remove("loading");
+              $(id).textContent = "—";
+            });
+            errBox.textContent =
+              "⚠ " + (err?.message || "Connection failed. Check deployment.");
+            errBox.style.display = "block";
+            $("dash-log-list").innerHTML =
+              '<div class="empty-text">Connection error.</div>';
+          },
+        );
+      }
+
+      /* ══════════════════════════════════════════
+   REPORTS
+══════════════════════════════════════════ */
+      function setPeriod(p) {
+        APP.currentPeriod = p;
+        ["today", "week", "month"].forEach((x) =>
+          $("rp-" + x).classList.toggle("active", x === p),
+        );
+        loadReport();
+      }
+
+      function loadReport() {
+        $("report-tbody").innerHTML =
+          '<tr><td colspan="4" class="empty-text">Loading…</td></tr>';
+        ["rp-in", "rp-out", "rp-unique"].forEach(
+          (id) => ($(id).textContent = "—"),
+        );
+        $("bar-chart").innerHTML =
+          '<div class="empty-text" style="padding:0;width:100%;font-size:11px">Loading…</div>';
+
+        callBackend(
+          "getReportData",
+          [APP.currentPeriod],
+          function (data) {
+            if (!data || !data.success) {
+              $("report-tbody").innerHTML =
+                '<tr><td colspan="4" class="empty-text">Error: ' +
+                esc(data?.error || "Load failed") +
+                "</td></tr>";
+              return;
+            }
+
+            const logs = data.logs || [];
+            const inCount = logs.filter((l) => l.action === "IN").length;
+            const outCount = logs.filter((l) => l.action === "OUT").length;
+            const uniqueSet = new Set(logs.map((l) => l.userId));
+
+            $("rp-in").textContent = inCount;
+            $("rp-out").textContent = outCount;
+            $("rp-unique").textContent = uniqueSet.size;
+            $("report-count").textContent = logs.length + " records";
+
+            if (!logs.length) {
+              $("report-tbody").innerHTML =
+                '<tr><td colspan="4" class="empty-text">No data for this period.</td></tr>';
+            } else {
+              const frag = document.createDocumentFragment();
+              logs.forEach((log) => {
+                const action = String(log.action || "").toUpperCase();
+                const tr = document.createElement("tr");
+                tr.innerHTML =
+                  "<td><strong>" +
+                  esc(log.name) +
+                  "</strong><br>" +
+                  '<span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted)">' +
+                  esc(log.userId) +
+                  "</span></td>" +
+                  '<td><span class="pill ' +
+                  (action === "IN" ? "pill-green" : "pill-red") +
+                  '">' +
+                  action +
+                  "</span></td>" +
+                  '<td style="font-family:var(--font-mono);font-size:10px">' +
+                  formatTimestamp(log.timestamp) +
+                  "</td>" +
+                  '<td style="font-size:10px;color:var(--text-muted)">' +
+                  esc(log.device || "—") +
+                  "</td>";
+                frag.appendChild(tr);
+              });
+              $("report-tbody").innerHTML = "";
+              $("report-tbody").appendChild(frag);
+            }
+
+            renderBarChart(data.dailyBreakdown || []);
+          },
+          function (err) {
+            $("report-tbody").innerHTML =
+              '<tr><td colspan="4" class="empty-text">Failed: ' +
+              esc(err?.message || err) +
+              "</td></tr>";
+          },
+        );
+      }
+
+      function renderBarChart(days) {
+        const chart = $("bar-chart");
+        if (!days || !days.length) {
+          chart.innerHTML =
+            '<div class="empty-text" style="padding:0;width:100%">No chart data</div>';
+          return;
+        }
+
+        const max = Math.max(...days.map((d) => (d.in || 0) + (d.out || 0)), 1);
+        const frag = document.createDocumentFragment();
+
+        days.forEach((day) => {
+          const inH = Math.round(((day.in || 0) / max) * 70);
+          const outH = Math.round(((day.out || 0) / max) * 70);
+          const col = document.createElement("div");
+          col.className = "bar-col";
+          col.innerHTML =
+            '<div class="bar in-bar"  style="height:' +
+            inH +
+            'px" title="IN:' +
+            (day.in || 0) +
+            '"></div>' +
+            '<div class="bar out-bar" style="height:' +
+            outH +
+            'px" title="OUT:' +
+            (day.out || 0) +
+            '"></div>' +
+            '<div class="bar-lbl">' +
+            esc(day.label || "-") +
+            "</div>";
+          frag.appendChild(col);
+        });
+
+        chart.innerHTML = "";
+        chart.appendChild(frag);
+      }
+
+      /* ══════════════════════════════════════════
+   EXPORT CSV
+══════════════════════════════════════════ */
+      function exportCSV() {
+        showToast("Preparing export…", 5000);
+        callBackend(
+          "exportLogsCSV",
+          [],
+          function (res) {
+            if (!res?.success || !res.csv) {
+              showToast("✗ Export failed");
+              return;
+            }
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(
+              new Blob([res.csv], { type: "text/csv" }),
+            );
+            a.download =
+              "scanpass_logs_" + new Date().toISOString().slice(0, 10) + ".csv";
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast("✓ CSV exported");
+          },
+          () => showToast("✗ Export failed"),
+        );
+      }
+
+      /* ── Init ── */
+      window.addEventListener("load", () => {
+        setStatus(
+          "idle",
+          "Ready to Scan",
+          "Enable camera to start scanning QR codes",
+        );
+      });
+    </script>
+  </body>
+</html>
