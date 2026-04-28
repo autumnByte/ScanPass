@@ -1954,29 +1954,29 @@
         }
 
         /* ── If running on Vercel / normal website ── */
-   // External deployed mode (Vercel)
-  fetch(API_URL, {
-    method: "POST",
-    mode: "cors",
-    redirect: "follow",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      functionName: fnName,
-      args: args
-    })
-  })
-  .then(res => res.text())
-  .then(text => {
-    const data = JSON.parse(text);
-    if (onSuccess) onSuccess(data);
-  })
-  .catch(err => {
-    console.error("[FETCH]", err);
-    if (onFail) onFail(err);
-  });
-}
+        // External deployed mode (Vercel)
+        fetch(API_URL, {
+          method: "POST",
+          mode: "cors",
+          redirect: "follow",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8",
+          },
+          body: JSON.stringify({
+            functionName: fnName,
+            args: args,
+          }),
+        })
+          .then((res) => res.text())
+          .then((text) => {
+            const data = JSON.parse(text);
+            if (onSuccess) onSuccess(data);
+          })
+          .catch((err) => {
+            console.error("[FETCH]", err);
+            if (onFail) onFail(err);
+          });
+      }
 
       /* ══════════════════════════════════════════
    ERROR CODE → UI MESSAGE MAP
@@ -2121,6 +2121,46 @@
       /* ══════════════════════════════════════════
    QR-ONLY SCANNER
 ══════════════════════════════════════════ */
+      /* ── Camera routing helpers ── */
+      function _isMobile() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      }
+
+      const VIRTUAL_CAM_RE = /obs|virtual|snap|manycam|droidcam|iriun|epoccam|mmhmm|xsplit|ndi|ecamm/i;
+
+      function _pickRearCamera(cameras) {
+        // On mobile, labels are blank until after permission — prefer by index
+        // Rear cam is almost always index 1+ (front is 0 on most phones)
+        const realCams = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
+
+        // Label-based first (labels available on desktop / after permission)
+        const byLabel = realCams.find(c =>
+          /back|rear|environment/i.test(c.label)
+        );
+        if (byLabel) return byLabel;
+
+        // On mobile with blank labels: last camera = rear (index heuristic)
+        if (_isMobile() && realCams.length > 1) return realCams[realCams.length - 1];
+
+        // Single real cam or desktop fallback
+        return realCams[0] || cameras[cameras.length - 1];
+      }
+
+      function _pickFrontCamera(cameras) {
+        const realCams = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
+
+        // Label-based
+        const byLabel = realCams.find(c =>
+          /front|user|face|selfie/i.test(c.label)
+        );
+        if (byLabel) return byLabel;
+
+        // On mobile with blank labels: first camera = front
+        if (_isMobile() && realCams.length > 1) return realCams[0];
+
+        return realCams[0] || cameras[0];
+      }
+
       function startCamera() {
         $("btn-start").disabled = true;
         setStatus(
@@ -2130,78 +2170,69 @@
         );
 
         if (APP.qrScanner) {
-          APP.qrScanner.clear();
+          APP.qrScanner.clear().catch(() => {});
           APP.qrScanner = null;
         }
 
         APP.qrScanner = new Html5Qrcode("qr-reader");
 
+        // On mobile, use facingMode constraint directly — most reliable
+        if (_isMobile()) {
+          APP.qrScanner.start(
+            { facingMode: { exact: "environment" } },
+            { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
+            onQRSuccess,
+            () => {}
+          )
+          .then(_onQRCameraReady)
+          .catch(() => {
+            // Fallback: try without 'exact' (allows any rear-like cam)
+            APP.qrScanner.start(
+              { facingMode: "environment" },
+              { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
+              onQRSuccess,
+              () => {}
+            )
+            .then(_onQRCameraReady)
+            .catch(_onQRCameraError);
+          });
+          return;
+        }
+
+        // Desktop: enumerate then pick label-based
         Html5Qrcode.getCameras()
           .then((cameras) => {
-            if (!cameras || !cameras.length) {
-              throw { name: "NO_CAMERA" };
-            }
-
-            /* Prefer real cameras, avoid OBS / virtual cams */
-            const preferred = cameras.find(
-              (c) =>
-                !/obs|virtual|snap|manycam/i.test(c.label) &&
-                /back|rear|environment|integrated|webcam|camera/i.test(c.label),
-            );
-
-            const fallback = cameras.find(
-              (c) => !/obs|virtual|snap|manycam/i.test(c.label),
-            );
-
-            const camId = preferred?.id || fallback?.id || cameras[0].id;
-
+            if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
+            const cam = _pickRearCamera(cameras);
             return APP.qrScanner.start(
-              camId,
-              {
-                fps: 15,
-                qrbox: { width: 220, height: 220 },
-                aspectRatio: 1.0,
-                disableFlip: false,
-              },
+              cam.id,
+              { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
               onQRSuccess,
               () => {},
             );
           })
+          .then(_onQRCameraReady)
+          .catch(_onQRCameraError);
+      }
 
-          .then(() => {
-            APP.scanning = true;
+      function _onQRCameraReady() {
+        APP.scanning = true;
+        $("scanner-idle").style.display = "none";
+        $("qr-frame").classList.add("scanning");
+        $("btn-start").classList.add("hidden");
+        $("btn-stop").classList.remove("hidden");
+        $("btn-start").disabled = false;
+        setStatus("processing", "Scanning…", "Align QR code within the frame");
+      }
 
-            $("scanner-idle").style.display = "none";
-            $("qr-frame").classList.add("scanning");
-            $("btn-start").classList.add("hidden");
-            $("btn-stop").classList.remove("hidden");
-            $("btn-start").disabled = false;
-
-            setStatus(
-              "processing",
-              "Scanning…",
-              "Align QR code within the frame",
-            );
-          })
-
-          .catch((err) => {
-            const isCameraError = /Permission|NotAllowed/i.test(String(err));
-
-            const isNoCam = err?.name === "NO_CAMERA";
-
-            const code = isCameraError
-              ? "CAMERA_DENIED"
-              : isNoCam
-                ? "NO_CAMERA"
-                : "UNKNOWN_ERROR";
-
-            const ui = getErrorUI(code);
-
-            setStatus(ui.state, ui.title, ui.msg);
-            showToast("✗ " + ui.title);
-
-            resetQRButtons();
-          });
+      function _onQRCameraError(err) {
+        const isCameraError = /Permission|NotAllowed|NotFound/i.test(String(err));
+        const isNoCam = err?.name === "NO_CAMERA" || /NotFound/i.test(String(err));
+        const code = isNoCam ? "NO_CAMERA" : isCameraError ? "CAMERA_DENIED" : "UNKNOWN_ERROR";
+        const ui = getErrorUI(code);
+        setStatus(ui.state, ui.title, ui.msg);
+        showToast("✗ " + ui.title);
+        resetQRButtons();
       }
 
       function stopCamera() {
@@ -2309,12 +2340,23 @@
 
         if (code === "IN" || code === "OUT") {
           APP.scansSession++;
+
+          // Optimistically update scanner mini-stats from scan response
           if (result.data) {
-            if (result.data.scansToday !== undefined)
-              $("stat-scans").textContent = result.data.scansToday;
-            if (result.data.presentNow !== undefined)
-              $("stat-present").textContent = result.data.presentNow;
+            if (result.data.scansToday !== undefined) {
+              STATS_CACHE.scansToday = result.data.scansToday;
+              _setText("stat-scans", result.data.scansToday);
+            }
+            if (result.data.presentNow !== undefined) {
+              STATS_CACHE.presentNow = result.data.presentNow;
+              STATS_CACHE.absentNow  = (STATS_CACHE.totalUsers || 0) - result.data.presentNow;
+              _setText("stat-present", result.data.presentNow);
+              _setText("ds-present",   result.data.presentNow);
+              _setText("ds-absent",    STATS_CACHE.absentNow);
+            }
+            _setText("ds-scans", STATS_CACHE.scansToday);
           }
+
           setStatus(
             "success",
             code === "IN" ? "✓ Entry Logged – IN" : "✓ Exit Logged – OUT",
@@ -2322,6 +2364,12 @@
           );
           showUserResult(result.data?.name, result.data?.email, code);
           showToast((result.data?.name || "User") + " → " + code);
+
+          // Force full refresh so all tabs stay consistent
+          setTimeout(() => {
+            refreshGlobalStats(true);
+            if (APP.activeTab === "reports") loadReport();
+          }, 1500);
 
           if (APP.mode === "face") {
             setTimeout(resetFaceMode, 3500);
@@ -2378,51 +2426,57 @@
           "Opening front camera for identity snapshot",
         );
 
-        navigator.mediaDevices
-          .getUserMedia({
-            video: {
-              facingMode: "user",
-              width: { ideal: 480 },
-              height: { ideal: 480 },
-            },
-            audio: false,
-          })
+        // Try exact front camera first, then relax constraint if it fails
+        function _startFrontStream(constraints) {
+          return navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+        }
 
-          .then((stream) => {
-            APP.faceStream = stream;
+        function _attachFaceStream(stream) {
+          APP.faceStream = stream;
+          const video = $("face-video");
+          video.srcObject = stream;
+          video.play();
+          $("face-frame").className = "face-frame verifying";
+          $("face-msg").textContent = "Hold still — capturing in 3 seconds…";
+          $("btn-face-start").classList.add("hidden");
+          $("btn-face-stop").classList.remove("hidden");
+          setStatus("processing", "Face Camera Active", "Keep face centred inside the circle");
+          setTimeout(() => {
+            if (!APP.faceStream) return;
+            captureFaceFrame(video);
+          }, 3000);
+        }
 
-            const video = $("face-video");
-            video.srcObject = stream;
-            video.play();
+        function _faceCameraFail(err) {
+          const isDenied = /Permission|NotAllowed/i.test(String(err));
+          const isNotFound = /NotFound|DevicesNotFound|OverconstrainedError/i.test(String(err));
+          const code = isDenied ? "CAMERA_DENIED" : isNotFound ? "NO_CAMERA" : "UNKNOWN_ERROR";
+          const ui = getErrorUI(code);
+          setStatus(ui.state, ui.title, ui.msg);
+          showToast("✗ " + ui.title);
+          $("btn-face-start").disabled = false;
+        }
 
-            $("face-frame").className = "face-frame verifying";
-            $("face-msg").textContent = "Hold still — capturing in 3 seconds…";
+        const frontConstraintsExact = _isMobile()
+          ? { facingMode: { exact: "user" }, width: { ideal: 480 }, height: { ideal: 480 } }
+          : { facingMode: "user", width: { ideal: 480 }, height: { ideal: 480 } };
 
-            $("btn-face-start").classList.add("hidden");
-            $("btn-face-stop").classList.remove("hidden");
-
-            setStatus(
-              "processing",
-              "Face Camera Active",
-              "Keep face centred inside the circle",
-            );
-
-            setTimeout(() => {
-              if (!APP.faceStream) return;
-
-              captureFaceFrame(video);
-            }, 3000);
-          })
-
-          .catch((err) => {
-            const isDenied = /Permission|NotAllowed/i.test(String(err));
-
-            const ui = getErrorUI(isDenied ? "CAMERA_DENIED" : "UNKNOWN_ERROR");
-
-            setStatus(ui.state, ui.title, ui.msg);
-            showToast("✗ " + ui.title);
-
-            $("btn-face-start").disabled = false;
+        _startFrontStream(frontConstraintsExact)
+          .then(_attachFaceStream)
+          .catch(() => {
+            // Fallback 1: relax exact constraint
+            _startFrontStream({ facingMode: "user", width: { ideal: 480 }, height: { ideal: 480 } })
+              .then(_attachFaceStream)
+              .catch(() => {
+                // Fallback 2: enumerate and pick front camera by label / index
+                Html5Qrcode.getCameras().then((cameras) => {
+                  if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
+                  const cam = _pickFrontCamera(cameras);
+                  return _startFrontStream({ deviceId: { exact: cam.id }, width: { ideal: 480 }, height: { ideal: 480 } });
+                })
+                .then(_attachFaceStream)
+                .catch(_faceCameraFail);
+              });
           });
       }
 
@@ -2558,102 +2612,173 @@
       }
 
       /* ══════════════════════════════════════════
-   DASHBOARD
+   GLOBAL STATS — single source of truth
+   All tabs read from this cache
 ══════════════════════════════════════════ */
+      const STATS_CACHE = {
+        totalUsers: null,
+        presentNow: null,
+        absentNow: null,
+        scansToday: null,
+        portalName: null,
+        recentLogs: null,
+        lastFetched: 0,
+        fetching: false,
+      };
+
+      const STATS_TTL_MS = 12000; // 12s cache TTL — stale after this
+      let _autoRefreshTimer = null;
+
+      /**
+       * Master stats refresh — fetches once, updates ALL stat elements.
+       * Pass force=true to bypass TTL (e.g. right after a scan).
+       * Returns a Promise so callers can await if needed.
+       */
+      function refreshGlobalStats(force) {
+        const now = Date.now();
+        if (!force && STATS_CACHE.fetching) return Promise.resolve(STATS_CACHE);
+        if (!force && now - STATS_CACHE.lastFetched < STATS_TTL_MS) {
+          _applyStatsCacheToUI();
+          return Promise.resolve(STATS_CACHE);
+        }
+
+        STATS_CACHE.fetching = true;
+
+        return new Promise((resolve) => {
+          callBackend(
+            "getDashboardStats",
+            [],
+            function (data) {
+              STATS_CACHE.fetching = false;
+              if (!data || !data.success) {
+                // keep last known values; mark as retried
+                STATS_CACHE.lastFetched = now; // don't hammer on failure
+                _applyStatsCacheToUI(true);
+                resolve(STATS_CACHE);
+                return;
+              }
+              STATS_CACHE.totalUsers  = data.totalUsers  ?? STATS_CACHE.totalUsers;
+              STATS_CACHE.presentNow  = data.presentNow  ?? STATS_CACHE.presentNow;
+              STATS_CACHE.absentNow   = data.absentNow   ?? STATS_CACHE.absentNow;
+              STATS_CACHE.scansToday  = data.scansToday  ?? STATS_CACHE.scansToday;
+              STATS_CACHE.portalName  = data.portalName  || STATS_CACHE.portalName;
+              STATS_CACHE.recentLogs  = data.recentLogs  || STATS_CACHE.recentLogs;
+              STATS_CACHE.lastFetched = now;
+              _applyStatsCacheToUI(false);
+              resolve(STATS_CACHE);
+            },
+            function () {
+              STATS_CACHE.fetching = false;
+              STATS_CACHE.lastFetched = now;
+              _applyStatsCacheToUI(true);
+              resolve(STATS_CACHE);
+            }
+          );
+        });
+      }
+
+      /** Push cached stats into every element that shows them */
+      function _applyStatsCacheToUI(isFailed) {
+        const safe = (v) => (v === null || v === undefined ? (isFailed ? "—" : "…") : v);
+
+        // Scanner mini-stats
+        _setText("stat-scans",   safe(STATS_CACHE.scansToday));
+        _setText("stat-present", safe(STATS_CACHE.presentNow));
+
+        // Dashboard cards
+        _setText("ds-total",   safe(STATS_CACHE.totalUsers));
+        _setText("ds-present", safe(STATS_CACHE.presentNow));
+        _setText("ds-absent",  safe(STATS_CACHE.absentNow));
+        _setText("ds-scans",   safe(STATS_CACHE.scansToday));
+
+        DASH_IDS.forEach((id) => {
+          const el = $(id);
+          if (el) el.classList.remove("loading");
+        });
+
+        if (STATS_CACHE.portalName) {
+          _setText("stat-portal",       STATS_CACHE.portalName);
+          _setText("dash-portal-name",  STATS_CACHE.portalName + " · Admin");
+        }
+
+        // Dashboard recent logs list (only when on dashboard tab)
+        if (APP.activeTab === "dashboard" && STATS_CACHE.recentLogs !== null) {
+          _renderDashLogs(STATS_CACHE.recentLogs);
+        }
+      }
+
+      function _setText(id, val) {
+        const el = $(id);
+        if (el) el.textContent = val;
+      }
+
+      function _renderDashLogs(logs) {
+        const list = $("dash-log-list");
+        if (!list) return;
+        if (!logs || !logs.length) {
+          list.innerHTML = '<div class="empty-text">No activity logged yet.</div>';
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        logs.forEach((log) => {
+          const action = String(log.action || "").trim().toUpperCase();
+          const div = document.createElement("div");
+          div.className = "log-item";
+          div.innerHTML =
+            '<span class="log-badge ' + action + '">' + action + "</span>" +
+            '<div style="flex:1;min-width:0">' +
+            '<div class="log-name">' + esc(log.name) + "</div>" +
+            '<div class="log-uid">'  + esc(log.userId) + "</div>" +
+            "</div>" +
+            '<div class="log-time">' + formatTimestamp(log.timestamp) + "</div>";
+          frag.appendChild(div);
+        });
+        list.innerHTML = "";
+        list.appendChild(frag);
+      }
+
+      /** Start auto-refresh every 13 seconds */
+      function _startAutoRefresh() {
+        if (_autoRefreshTimer) return;
+        _autoRefreshTimer = setInterval(() => {
+          if (document.hidden) return; // skip when tab not visible
+          refreshGlobalStats(true);
+          // Also reload reports quietly if on that tab
+          if (APP.activeTab === "reports") loadReport();
+        }, 13000);
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refreshGlobalStats(true);
+      });
+
+
+
       const DASH_IDS = ["ds-total", "ds-present", "ds-absent", "ds-scans"];
 
       function loadDashboard() {
-        // Skeleton state
-        DASH_IDS.forEach((id) => {
-          $(id).textContent = "";
-          $(id).classList.add("loading");
-        });
-        $("dash-log-list").innerHTML = '<div class="empty-text">Loading…</div>';
+        // Show loading skeleton only if we have no cached data yet
+        if (STATS_CACHE.totalUsers === null) {
+          DASH_IDS.forEach((id) => {
+            const el = $(id);
+            if (el) { el.textContent = ""; el.classList.add("loading"); }
+          });
+          const ll = $("dash-log-list");
+          if (ll) ll.innerHTML = '<div class="empty-text">Loading…</div>';
+        }
 
         const errBox = $("dash-error");
-        errBox.style.display = "none";
-        errBox.textContent = "";
+        if (errBox) { errBox.style.display = "none"; errBox.textContent = ""; }
 
-        callBackend(
-          "getDashboardStats",
-          [],
-          function (data) {
-            DASH_IDS.forEach((id) => $(id).classList.remove("loading"));
-
-            if (!data || !data.success) {
-              errBox.textContent =
-                "⚠ " + (data?.error || "Failed to load dashboard.");
-              errBox.style.display = "block";
-              DASH_IDS.forEach((id) => ($(id).textContent = "—"));
-              $("dash-log-list").innerHTML =
-                '<div class="empty-text">Could not load activity.</div>';
-              return;
-            }
-
-            $("ds-total").textContent = data.totalUsers ?? 0;
-            $("ds-present").textContent = data.presentNow ?? 0;
-            $("ds-absent").textContent = data.absentNow ?? 0;
-            $("ds-scans").textContent = data.scansToday ?? 0;
-
-            // Sync scanner mini-stats
-            $("stat-scans").textContent = data.scansToday ?? 0;
-            $("stat-present").textContent = data.presentNow ?? 0;
-
-            if (data.portalName) {
-              $("stat-portal").textContent = data.portalName;
-              $("dash-portal-name").textContent = data.portalName + " · Admin";
-            }
-
-            const logs = data.recentLogs || [];
-            if (!logs.length) {
-              $("dash-log-list").innerHTML =
-                '<div class="empty-text">No activity logged yet.</div>';
-              return;
-            }
-
-            // Build DOM fragment — single reflow
-            const frag = document.createDocumentFragment();
-            logs.forEach((log) => {
-              const action = String(log.action || "")
-                .trim()
-                .toUpperCase();
-              const div = document.createElement("div");
-              div.className = "log-item";
-              div.innerHTML =
-                '<span class="log-badge ' +
-                action +
-                '">' +
-                action +
-                "</span>" +
-                '<div style="flex:1;min-width:0">' +
-                '<div class="log-name">' +
-                esc(log.name) +
-                "</div>" +
-                '<div class="log-uid">' +
-                esc(log.userId) +
-                "</div>" +
-                "</div>" +
-                '<div class="log-time">' +
-                formatTimestamp(log.timestamp) +
-                "</div>";
-              frag.appendChild(div);
-            });
-            $("dash-log-list").innerHTML = "";
-            $("dash-log-list").appendChild(frag);
-          },
-          function (err) {
-            DASH_IDS.forEach((id) => {
-              $(id).classList.remove("loading");
-              $(id).textContent = "—";
-            });
-            errBox.textContent =
-              "⚠ " + (err?.message || "Connection failed. Check deployment.");
+        refreshGlobalStats(true).then((cache) => {
+          if (cache.totalUsers === null && errBox) {
+            errBox.textContent = "⚠ Could not load dashboard. Check connection.";
             errBox.style.display = "block";
-            $("dash-log-list").innerHTML =
-              '<div class="empty-text">Connection error.</div>';
-          },
-        );
+          }
+        });
       }
+
+
 
       /* ══════════════════════════════════════════
    REPORTS
@@ -2811,6 +2936,9 @@
           "Ready to Scan",
           "Enable camera to start scanning QR codes",
         );
+        // Pre-load stats so scanner mini-stats show immediately
+        refreshGlobalStats(true);
+        _startAutoRefresh();
       });
     </script>
   </body>
