@@ -1846,6 +1846,10 @@
         scansSession: 0,
         mode: "qr", // 'qr' | 'face'
         currentPeriod: "today",
+
+        // Internal timer handles — cleared on new events to prevent races
+        _unlockTimer: null,
+        _statsRefreshTimer: null,
       };
 
       /* ══════════════════════════════════════════
@@ -2057,8 +2061,11 @@
       function switchTab(tab) {
         if (APP.activeTab === tab) return;
 
-        // Clean up cameras on leaving scanner tab
+        // Clean up cameras + timers on leaving scanner tab
         if (APP.activeTab === "scanner") {
+          clearTimeout(APP._unlockTimer);
+          clearTimeout(APP._statsRefreshTimer);
+          APP.scanLocked = false;
           stopCamera();
           resetFaceMode();
         }
@@ -2073,8 +2080,12 @@
         $("page-" + tab).classList.add("active");
         $("tab-" + tab).classList.add("active");
 
+        // On every tab switch: push current cache immediately, then force-fetch
+        _applyStatsCacheToUI(false);
+
         if (tab === "dashboard") loadDashboard();
-        if (tab === "reports") loadReport();
+        if (tab === "reports") { refreshGlobalStats(true); loadReport(); }
+        if (tab === "scanner") refreshGlobalStats(true);
       }
 
       /* ══════════════════════════════════════════
@@ -2103,6 +2114,12 @@
       function setMode(mode) {
         if (APP.mode === mode) return;
         APP.mode = mode;
+
+        // Cancel pending timers before teardown
+        clearTimeout(APP._unlockTimer);
+        clearTimeout(APP._statsRefreshTimer);
+        APP.scanLocked = false;
+
         stopCamera();
         resetFaceMode();
         $("mode-qr-btn").classList.toggle("active", mode === "qr");
@@ -2163,60 +2180,69 @@
 
       function startCamera() {
         $("btn-start").disabled = true;
-        setStatus(
-          "processing",
-          "Starting Camera…",
-          "Requesting camera permission",
-        );
+        setStatus("processing", "Starting Camera…", "Requesting camera permission");
 
+        // Cancel stale timers from previous session
+        clearTimeout(APP._unlockTimer);
+        clearTimeout(APP._statsRefreshTimer);
+        APP.scanLocked = false;
+
+        // Tear down any existing scanner instance completely
         if (APP.qrScanner) {
-          APP.qrScanner.clear().catch(() => {});
+          const old = APP.qrScanner;
           APP.qrScanner = null;
+          APP.scanning = false;
+          old.stop().catch(() => {}).finally(() => old.clear().catch(() => {}));
         }
 
-        APP.qrScanner = new Html5Qrcode("qr-reader");
+        // Small delay after teardown before creating new instance
+        setTimeout(() => {
+          APP.qrScanner = new Html5Qrcode("qr-reader");
 
-        // On mobile, use facingMode constraint directly — most reliable
-        if (_isMobile()) {
-          APP.qrScanner.start(
-            { facingMode: { exact: "environment" } },
-            { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
-            onQRSuccess,
-            () => {}
-          )
-          .then(_onQRCameraReady)
-          .catch(() => {
-            // Fallback: try without 'exact' (allows any rear-like cam)
+          if (_isMobile()) {
             APP.qrScanner.start(
-              { facingMode: "environment" },
+              { facingMode: { exact: "environment" } },
               { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
               onQRSuccess,
               () => {}
             )
             .then(_onQRCameraReady)
-            .catch(_onQRCameraError);
-          });
-          return;
-        }
-
-        // Desktop: enumerate then pick label-based
-        Html5Qrcode.getCameras()
-          .then((cameras) => {
-            if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
-            const cam = _pickRearCamera(cameras);
-            return APP.qrScanner.start(
-              cam.id,
-              { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
-              onQRSuccess,
-              () => {},
-            );
-          })
-          .then(_onQRCameraReady)
-          .catch(_onQRCameraError);
+            .catch(() => {
+              if (!APP.qrScanner) return; // was cleared
+              APP.qrScanner.start(
+                { facingMode: "environment" },
+                { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
+                onQRSuccess,
+                () => {}
+              )
+              .then(_onQRCameraReady)
+              .catch(_onQRCameraError);
+            });
+          } else {
+            Html5Qrcode.getCameras()
+              .then((cameras) => {
+                if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
+                if (!APP.qrScanner) throw { name: "ABORTED" };
+                const cam = _pickRearCamera(cameras);
+                return APP.qrScanner.start(
+                  cam.id,
+                  { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
+                  onQRSuccess,
+                  () => {},
+                );
+              })
+              .then(_onQRCameraReady)
+              .catch((e) => {
+                if (e?.name === "ABORTED") return;
+                _onQRCameraError(e);
+              });
+          }
+        }, APP.scanning ? 300 : 0); // slight delay only if previous was running
       }
 
       function _onQRCameraReady() {
         APP.scanning = true;
+        APP.scanLocked = false; // ensure clean state on each camera start
         $("scanner-idle").style.display = "none";
         $("qr-frame").classList.add("scanning");
         $("btn-start").classList.add("hidden");
@@ -2236,25 +2262,37 @@
       }
 
       function stopCamera() {
-        if (!APP.qrScanner || !APP.scanning) return;
-        APP.qrScanner
-          .stop()
-          .then(() => {
-            APP.scanning = false;
-            APP.scanLocked = false;
-            $("scanner-idle").style.display = "";
-            $("qr-frame").classList.remove("scanning");
-            $("btn-stop").classList.add("hidden");
-            $("btn-start").classList.remove("hidden");
-            setStatus(
-              "idle",
-              "Ready to Scan",
-              "Enable camera to start scanning QR codes",
-            );
-          })
-          .catch(() => {
-            APP.scanning = false;
-          });
+        // Cancel any pending unlock / refresh timers
+        clearTimeout(APP._unlockTimer);
+        clearTimeout(APP._statsRefreshTimer);
+        APP.scanLocked = false;
+
+        if (!APP.qrScanner) {
+          // Nothing to stop — just reset UI
+          APP.scanning = false;
+          $("scanner-idle").style.display = "";
+          $("qr-frame").classList.remove("scanning");
+          $("btn-stop").classList.add("hidden");
+          $("btn-start").classList.remove("hidden");
+          $("btn-start").disabled = false;
+          setStatus("idle", "Ready to Scan", "Enable camera to start scanning QR codes");
+          return;
+        }
+
+        // html5-qrcode .stop() rejects if already stopped — always safe to catch
+        const scanner = APP.qrScanner;
+        APP.qrScanner = null; // null immediately so onQRSuccess calls are dropped
+        APP.scanning = false;
+
+        scanner.stop().catch(() => {}).finally(() => {
+          scanner.clear().catch(() => {});
+          $("scanner-idle").style.display = "";
+          $("qr-frame").classList.remove("scanning");
+          $("btn-stop").classList.add("hidden");
+          $("btn-start").classList.remove("hidden");
+          $("btn-start").disabled = false;
+          setStatus("idle", "Ready to Scan", "Enable camera to start scanning QR codes");
+        });
       }
 
       function resetQRButtons() {
@@ -2268,6 +2306,8 @@
    scanLocked prevents double-fire on fast cameras
 ══════════════════════════════════════════ */
       function onQRSuccess(decodedText) {
+        // Bail if scanner was stopped/nulled, or already processing
+        if (!APP.qrScanner && APP.mode === "qr") return;
         if (APP.scanLocked) return;
         APP.scanLocked = true;
 
@@ -2287,12 +2327,8 @@
         }
 
         if (!userId || !String(userId).trim()) {
-          setStatus(
-            "error",
-            "Invalid QR",
-            "Could not read user ID from QR code.",
-          );
-          unlockAfter(2000);
+          setStatus("error", "Invalid QR", "Could not read user ID from QR code.");
+          _unlockScanner(2000);
           return;
         }
 
@@ -2309,54 +2345,57 @@
       /* ══════════════════════════════════════════
    SCAN RESULT HANDLERS
 ══════════════════════════════════════════ */
-      function unlockAfter(ms) {
-        setTimeout(() => {
+
+      // Central unlock: clears the lock and immediately re-arms scanning status
+      function _unlockScanner(resumeDelay) {
+        // Wait resumeDelay ms, then clear lock + restore "Scanning…" UI
+        // Using a named timer so rapid calls cancel the previous one
+        clearTimeout(APP._unlockTimer);
+        APP._unlockTimer = setTimeout(() => {
           APP.scanLocked = false;
-        }, ms);
+          // Only restore scanning message if camera is still live
+          if (APP.mode === "qr" && APP.scanning) {
+            setStatus("processing", "Scanning…", "Align QR code within the frame");
+          }
+        }, resumeDelay);
       }
 
-      function resumeScanning(delay) {
-        if (APP.mode === "qr" && APP.scanning) {
-          setTimeout(() => {
-            if (APP.scanning)
-              setStatus(
-                "processing",
-                "Scanning…",
-                "Align QR code within the frame",
-              );
-          }, delay);
-        }
-      }
+      // Legacy alias kept so any stray calls still work
+      function unlockAfter(ms) { _unlockScanner(ms); }
+      function resumeScanning() {} // replaced by _unlockScanner — kept as no-op
 
       function handleScanResult(result) {
         if (!result) {
           const ui = getErrorUI("NETWORK_ERROR");
           setStatus(ui.state, ui.title, ui.msg);
-          unlockAfter(2000);
+          _unlockScanner(2500);
           return;
         }
 
         const code = result.code || "";
 
+        /* ── SUCCESS ── */
         if (code === "IN" || code === "OUT") {
           APP.scansSession++;
 
-          // Optimistically update scanner mini-stats from scan response
+          // 1. Optimistically patch STATS_CACHE from scan response data
+          //    (backend already computed these fresh values)
           if (result.data) {
             if (result.data.scansToday !== undefined) {
               STATS_CACHE.scansToday = result.data.scansToday;
-              _setText("stat-scans", result.data.scansToday);
             }
             if (result.data.presentNow !== undefined) {
               STATS_CACHE.presentNow = result.data.presentNow;
-              STATS_CACHE.absentNow  = (STATS_CACHE.totalUsers || 0) - result.data.presentNow;
-              _setText("stat-present", result.data.presentNow);
-              _setText("ds-present",   result.data.presentNow);
-              _setText("ds-absent",    STATS_CACHE.absentNow);
+              STATS_CACHE.absentNow  = (STATS_CACHE.totalUsers !== null)
+                ? STATS_CACHE.totalUsers - result.data.presentNow
+                : STATS_CACHE.absentNow;
             }
-            _setText("ds-scans", STATS_CACHE.scansToday);
           }
 
+          // 2. Push updated cache to ALL stat elements immediately
+          _applyStatsCacheToUI(false);
+
+          // 3. Show success UI
           setStatus(
             "success",
             code === "IN" ? "✓ Entry Logged – IN" : "✓ Exit Logged – OUT",
@@ -2365,33 +2404,35 @@
           showUserResult(result.data?.name, result.data?.email, code);
           showToast((result.data?.name || "User") + " → " + code);
 
-          // Force full refresh so all tabs stay consistent
-          setTimeout(() => {
+          // 4. Authoritative full refresh after 1.5 s (let GAS settle)
+          clearTimeout(APP._statsRefreshTimer);
+          APP._statsRefreshTimer = setTimeout(() => {
             refreshGlobalStats(true);
+            // Also refresh reports if user is watching that tab
             if (APP.activeTab === "reports") loadReport();
           }, 1500);
 
+          // 5. Reset scanner for next user
           if (APP.mode === "face") {
-            setTimeout(resetFaceMode, 3500);
+            // Face mode: full reset after showing success
+            setTimeout(resetFaceMode, 3000);
           } else {
-            unlockAfter(3000);
-            resumeScanning(3500);
+            // QR mode: keep camera live, just unlock after cooldown
+            // 2.5 s cooldown — prevents same QR re-firing
+            _unlockScanner(2500);
           }
           return;
         }
 
-        // Error / warning codes
+        /* ── ERROR / WARNING ── */
         const ui = getErrorUI(code);
         setStatus(ui.state, ui.title, result.message || ui.msg);
         showToast((ui.state === "warning" ? "⚠ " : "✗ ") + ui.title);
 
-        if (code === "DUPLICATE_BLOCKED" || code === "SERVER_BUSY") {
-          unlockAfter(2000);
-          resumeScanning(2500);
-        } else {
-          unlockAfter(2000);
-          resumeScanning(2500);
-        }
+        // All error paths: unlock and resume scanning
+        // Duplicate blocked → shorter cooldown; others → standard
+        const cooldown = (code === "DUPLICATE_BLOCKED" || code === "SERVER_BUSY") ? 2000 : 2500;
+        _unlockScanner(cooldown);
       }
 
       function handleScanError(err) {
@@ -2399,11 +2440,11 @@
         setStatus(
           ui.state,
           ui.title,
-          "Failed to reach server: " + (err?.message || err),
+          "Failed to reach server. Check connection.",
         );
         showToast("✗ Network Error");
-        unlockAfter(0);
-        resumeScanning(3000);
+        // Unlock after 3 s — backend may be slow, not crashed
+        _unlockScanner(3000);
       }
 
       /* ══════════════════════════════════════════
@@ -2592,6 +2633,10 @@
 
       /* RESET MODE */
       function resetFaceMode() {
+        // Cancel any in-flight timers so they don't re-lock/re-refresh after reset
+        clearTimeout(APP._unlockTimer);
+        clearTimeout(APP._statsRefreshTimer);
+
         stopFaceStream();
 
         APP.faceImageData = null;
@@ -2636,13 +2681,23 @@
        */
       function refreshGlobalStats(force) {
         const now = Date.now();
+
+        // If a fetch is already in flight and it's been >15 s, assume it's stuck
+        if (STATS_CACHE.fetching && (now - STATS_CACHE.lastFetched) > 15000) {
+          STATS_CACHE.fetching = false; // reset stuck flag
+        }
+
         if (!force && STATS_CACHE.fetching) return Promise.resolve(STATS_CACHE);
         if (!force && now - STATS_CACHE.lastFetched < STATS_TTL_MS) {
-          _applyStatsCacheToUI();
+          _applyStatsCacheToUI(false);
           return Promise.resolve(STATS_CACHE);
         }
 
+        // If force and another fetch is in flight, let it complete — but track time
+        if (force && STATS_CACHE.fetching) return Promise.resolve(STATS_CACHE);
+
         STATS_CACHE.fetching = true;
+        STATS_CACHE.lastFetched = now; // mark immediately to prevent parallel calls
 
         return new Promise((resolve) => {
           callBackend(
@@ -2651,8 +2706,6 @@
             function (data) {
               STATS_CACHE.fetching = false;
               if (!data || !data.success) {
-                // keep last known values; mark as retried
-                STATS_CACHE.lastFetched = now; // don't hammer on failure
                 _applyStatsCacheToUI(true);
                 resolve(STATS_CACHE);
                 return;
@@ -2663,13 +2716,11 @@
               STATS_CACHE.scansToday  = data.scansToday  ?? STATS_CACHE.scansToday;
               STATS_CACHE.portalName  = data.portalName  || STATS_CACHE.portalName;
               STATS_CACHE.recentLogs  = data.recentLogs  || STATS_CACHE.recentLogs;
-              STATS_CACHE.lastFetched = now;
               _applyStatsCacheToUI(false);
               resolve(STATS_CACHE);
             },
             function () {
               STATS_CACHE.fetching = false;
-              STATS_CACHE.lastFetched = now;
               _applyStatsCacheToUI(true);
               resolve(STATS_CACHE);
             }
@@ -2792,12 +2843,13 @@
       }
 
       function loadReport() {
-        $("report-tbody").innerHTML =
-          '<tr><td colspan="4" class="empty-text">Loading…</td></tr>';
-        ["rp-in", "rp-out", "rp-unique"].forEach(
-          (id) => ($(id).textContent = "—"),
-        );
-        $("bar-chart").innerHTML =
+        const tbody = $("report-tbody");
+        const barChart = $("bar-chart");
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Loading…</td></tr>';
+        ["rp-in", "rp-out", "rp-unique"].forEach((id) => {
+          const el = $(id); if (el) el.textContent = "—";
+        });
+        if (barChart) barChart.innerHTML =
           '<div class="empty-text" style="padding:0;width:100%;font-size:11px">Loading…</div>';
 
         callBackend(
@@ -2805,25 +2857,24 @@
           [APP.currentPeriod],
           function (data) {
             if (!data || !data.success) {
-              $("report-tbody").innerHTML =
+              if (tbody) tbody.innerHTML =
                 '<tr><td colspan="4" class="empty-text">Error: ' +
-                esc(data?.error || "Load failed") +
-                "</td></tr>";
+                esc(data?.error || "Load failed") + "</td></tr>";
               return;
             }
 
             const logs = data.logs || [];
-            const inCount = logs.filter((l) => l.action === "IN").length;
+            const inCount  = logs.filter((l) => l.action === "IN").length;
             const outCount = logs.filter((l) => l.action === "OUT").length;
             const uniqueSet = new Set(logs.map((l) => l.userId));
 
-            $("rp-in").textContent = inCount;
-            $("rp-out").textContent = outCount;
-            $("rp-unique").textContent = uniqueSet.size;
-            $("report-count").textContent = logs.length + " records";
+            _setText("rp-in",     inCount);
+            _setText("rp-out",    outCount);
+            _setText("rp-unique", uniqueSet.size);
+            _setText("report-count", logs.length + " records");
 
             if (!logs.length) {
-              $("report-tbody").innerHTML =
+              if (tbody) tbody.innerHTML =
                 '<tr><td colspan="4" class="empty-text">No data for this period.</td></tr>';
             } else {
               const frag = document.createDocumentFragment();
@@ -2831,36 +2882,27 @@
                 const action = String(log.action || "").toUpperCase();
                 const tr = document.createElement("tr");
                 tr.innerHTML =
-                  "<td><strong>" +
-                  esc(log.name) +
-                  "</strong><br>" +
+                  "<td><strong>" + esc(log.name) + "</strong><br>" +
                   '<span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted)">' +
-                  esc(log.userId) +
-                  "</span></td>" +
+                  esc(log.userId) + "</span></td>" +
                   '<td><span class="pill ' +
-                  (action === "IN" ? "pill-green" : "pill-red") +
-                  '">' +
-                  action +
-                  "</span></td>" +
+                  (action === "IN" ? "pill-green" : "pill-red") + '">' +
+                  action + "</span></td>" +
                   '<td style="font-family:var(--font-mono);font-size:10px">' +
-                  formatTimestamp(log.timestamp) +
-                  "</td>" +
+                  formatTimestamp(log.timestamp) + "</td>" +
                   '<td style="font-size:10px;color:var(--text-muted)">' +
-                  esc(log.device || "—") +
-                  "</td>";
+                  esc(log.device || "—") + "</td>";
                 frag.appendChild(tr);
               });
-              $("report-tbody").innerHTML = "";
-              $("report-tbody").appendChild(frag);
+              if (tbody) { tbody.innerHTML = ""; tbody.appendChild(frag); }
             }
 
             renderBarChart(data.dailyBreakdown || []);
           },
           function (err) {
-            $("report-tbody").innerHTML =
+            if (tbody) tbody.innerHTML =
               '<tr><td colspan="4" class="empty-text">Failed: ' +
-              esc(err?.message || err) +
-              "</td></tr>";
+              esc(err?.message || err) + "</td></tr>";
           },
         );
       }
