@@ -918,7 +918,7 @@
           >
             <circle cx="12" cy="8" r="4" />
             <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg
-          >Snapshot + QR
+          >Snapshot 
         </button>
       </div>
 
@@ -1004,7 +1004,7 @@
       <!-- ── SNAPSHOT MODE ── -->
       <div id="face-mode-ui" class="hidden">
         <div class="scanner-card">
-          <div class="scanner-label">◈ Face Snapshot + QR ◈</div>
+          <div class="scanner-label">◈ Snapshot ◈</div>
 
           <!-- Step 1: face snapshot capture (front camera via getUserMedia) -->
           <div id="face-step-1">
@@ -1133,7 +1133,6 @@
       /* ── CONFIG ── */
       const API_URL =
         "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
-      // Paste the Apps Script portal URL here so scanner can redirect back:
       const PORTAL_URL =
         "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
 
@@ -1401,12 +1400,9 @@
         setTimeout(
           () => {
             APP.qrScanner = new Html5Qrcode("qr-reader");
-
-            // Load cameras list for flip functionality
             Html5Qrcode.getCameras()
               .then((cameras) => {
                 APP.cameras = cameras || [];
-                // Set initial index to rear cam
                 const rear = _pickRearCamera(APP.cameras);
                 APP.cameraIndex = APP.cameras.indexOf(rear);
                 if (APP.cameraIndex < 0) APP.cameraIndex = 0;
@@ -1571,7 +1567,7 @@
           return;
         }
 
-        // Stop current scanner cleanly
+       
         setStatus("processing", "Flipping Camera…", "Switching camera…");
         const old = APP.qrScanner;
         APP.qrScanner = null;
@@ -1584,7 +1580,7 @@
           old.clear();
         } catch (_) {}
 
-        // Advance to next camera
+       
         APP.cameraIndex = (APP.cameraIndex + 1) % cameras.length;
         const nextCam = cameras[APP.cameraIndex];
 
@@ -1725,7 +1721,7 @@
             }
           } catch (_) {}
 
-          // Show big success overlay then close
+          
           _showSuccessOverlay(result.data?.name, code, result.data);
 
           if (APP.mode === "face") {
