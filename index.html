@@ -2,2986 +2,1117 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-    />
-    <base target="_top" />
-    <title>ScanPass-QR Based Digital ID & Entry Logger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>ScanPass Scanner – AntBox</title>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
 
     <style>
-      /* ═══════════════════════════ TOKENS ═══════════════════════════ */
+      /* ═══════════ TOKENS ═══════════ */
       :root {
-        --bg-void: #07070d;
-        --bg-deep: #0d0d1a;
-        --bg-surface: #111128;
-        --bg-card: rgba(17, 17, 40, 0.75);
-        --bg-glass: rgba(255, 255, 255, 0.03);
-
-        --purple-300: #c4b5fd;
-        --purple-400: #a78bfa;
-        --purple-500: #8b5cf6;
-        --purple-600: #7c3aed;
-        --purple-700: #6d28d9;
-        --purple-neon: #bf80ff;
-        --purple-glow: rgba(139, 92, 246, 0.35);
-
-        --green-400: #4ade80;
-        --green-500: #22c55e;
-        --red-400: #f87171;
-        --red-500: #ef4444;
-        --amber-400: #fbbf24;
-        --blue-400: #60a5fa;
-
-        --text-primary: #f0edff;
-        --text-secondary: rgba(192, 180, 240, 0.75);
-        --text-muted: rgba(140, 120, 200, 0.5);
-
-        --border-subtle: rgba(139, 92, 246, 0.13);
-        --border-glow: rgba(139, 92, 246, 0.45);
-
-        --font-display: "Syne", sans-serif;
-        --font-mono: "DM Mono", monospace;
-
-        --radius-sm: 10px;
-        --radius-md: 16px;
-        --radius-lg: 24px;
-        --radius-xl: 32px;
-        --shadow-card:
-          0 4px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+        --bg:            #F7F5F0;
+        --bg-card:       #FFFFFF;
+        --accent:        #8E44EC;
+        --accent-light:  #F0E9FD;
+        --accent-glow:   rgba(142,68,236,0.22);
+        --accent-border: rgba(142,68,236,0.28);
+        --text:          #111111;
+        --text-muted:    #666666;
+        --text-faint:    #999999;
+        --border:        #EAE6DD;
+        --green:         #16A34A;
+        --green-bg:      #DCFCE7;
+        --green-border:  rgba(22,163,74,0.25);
+        --red:           #DC2626;
+        --red-bg:        #FEE2E2;
+        --red-border:    rgba(220,38,38,0.25);
+        --amber:         #D97706;
+        --amber-bg:      #FEF3C7;
+        --amber-border:  rgba(217,119,6,0.25);
+        --font: 'Plus Jakarta Sans', sans-serif;
+        --mono: 'JetBrains Mono', monospace;
+        --r:  12px;
+        --rl: 20px;
+        --rx: 28px;
+        --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+        --shadow-lg: 0 2px 8px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.08);
       }
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      html {
-        background: var(--bg-void);
-        min-height: 100%;
-        overflow-x: hidden;
-      }
+      *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+      html { background: var(--bg); }
       body {
-        font-family: var(--font-display);
-        background: var(--bg-void);
-        color: var(--text-primary);
-        min-height: 100vh;
-        overflow-x: hidden;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100dvh;
         -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
-      body::before {
-        content: "";
-        position: fixed;
-        top: -20%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 800px;
-        height: 600px;
-        pointer-events: none;
-        z-index: 0;
-        background: radial-gradient(
-          ellipse at center,
-          rgba(109, 40, 217, 0.18) 0%,
-          rgba(76, 29, 149, 0.08) 40%,
-          transparent 70%
-        );
-      }
-      .hidden {
-        display: none !important;
-      }
+      .hidden { display: none !important; }
 
-      /* ── TABS ── */
-      .tab-nav {
-        display: flex;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        background: rgba(7, 7, 13, 0.94);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-bottom: 1px solid var(--border-subtle);
-        padding: 0 16px;
-      }
-      .tab-btn {
-        flex: 1;
-        padding: 14px 8px;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-family: var(--font-display);
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        cursor: pointer;
-        position: relative;
-        transition: color 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .tab-btn svg {
-        width: 15px;
-        height: 15px;
-        flex-shrink: 0;
-      }
-      .tab-btn.active {
-        color: var(--purple-300);
-      }
-      .tab-btn.active::after {
-        content: "";
-        position: absolute;
-        bottom: -1px;
-        left: 20%;
-        right: 20%;
-        height: 2px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--purple-500),
-          transparent
-        );
-        border-radius: 2px;
-      }
+      /* ── APP SHELL ── */
+      .app { max-width: 430px; margin: 0 auto; padding: 0 16px 32px; }
 
-      /* ── PAGES ── */
-      .page {
-        display: none;
-      }
-      .page.active {
-        display: block;
-      }
-      .app-container {
-        position: relative;
-        z-index: 1;
-        max-width: 520px;
-        margin: 0 auto;
-        padding: 0 16px 100px;
-      }
-
-      /* ── SECTION LABEL ── */
-      .section-label {
-        font-family: var(--font-mono);
-        font-size: 9.5px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin: 20px 0 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .section-label::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-        background: var(--border-subtle);
-      }
-
-      /* ── CARD ── */
-      .card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        box-shadow: var(--shadow-card);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 14px;
-      }
-      .card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(139, 92, 246, 0.4),
-          transparent
-        );
-      }
-
-      /* ── BUTTONS ── */
-      .btn {
-        padding: 13px 20px;
-        border: none;
-        border-radius: var(--radius-md);
-        font-family: var(--font-display);
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        letter-spacing: 0.3px;
-      }
-      .btn-primary {
-        background: linear-gradient(
-          135deg,
-          var(--purple-600),
-          var(--purple-700)
-        );
-        color: #fff;
-        box-shadow:
-          0 4px 20px rgba(139, 92, 246, 0.4),
-          0 1px 0 rgba(255, 255, 255, 0.1) inset;
-      }
-      .btn-primary:hover {
-        background: linear-gradient(
-          135deg,
-          var(--purple-500),
-          var(--purple-600)
-        );
-        transform: translateY(-1px);
-        box-shadow: 0 6px 28px rgba(139, 92, 246, 0.6);
-      }
-      .btn-primary:active {
-        transform: translateY(0);
-      }
-      .btn-secondary {
-        background: rgba(139, 92, 246, 0.08);
-        color: var(--purple-400);
-        border: 1px solid var(--border-subtle);
-      }
-      .btn-secondary:hover {
-        background: rgba(139, 92, 246, 0.15);
-        border-color: var(--border-glow);
-      }
-      .btn-ghost {
-        background: transparent;
-        color: var(--text-muted);
-        border: 1px solid var(--border-subtle);
-        font-size: 12px;
-        padding: 8px 14px;
-      }
-      .btn-ghost:hover {
-        color: var(--text-secondary);
-        border-color: var(--border-glow);
-      }
-      .btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none !important;
-      }
-      .btn-group {
-        display: flex;
-        gap: 10px;
-      }
-
-      /* ── PILLS ── */
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 10px;
-        border-radius: 100px;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-      }
-      .pill-green {
-        background: rgba(34, 197, 94, 0.12);
-        color: var(--green-400);
-        border: 1px solid rgba(34, 197, 94, 0.2);
-      }
-      .pill-red {
-        background: rgba(239, 68, 68, 0.12);
-        color: var(--red-400);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-      }
-      .pill-purple {
-        background: rgba(139, 92, 246, 0.12);
-        color: var(--purple-400);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-      }
-      .pill-amber {
-        background: rgba(251, 191, 36, 0.12);
-        color: var(--amber-400);
-        border: 1px solid rgba(251, 191, 36, 0.2);
-      }
-
-      /* ── HEADER ── */
-      .header {
-        padding: 24px 0 18px;
-        text-align: center;
-      }
-      .logo-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 6px;
-      }
-      .logo-icon {
-        width: 36px;
-        height: 36px;
-        background: linear-gradient(
-          135deg,
-          var(--purple-500),
-          var(--purple-700)
-        );
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
-      }
-      .logo-icon svg {
-        width: 20px;
-        height: 20px;
-      }
-      .logo-text {
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        background: linear-gradient(
-          135deg,
-          #e0d4ff 0%,
-          var(--purple-neon) 50%,
-          var(--purple-400) 100%
-        );
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      .header-subtitle {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-      }
-      .badges {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 12px;
-        flex-wrap: wrap;
-      }
-      .badge {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 10px;
-        background: var(--bg-glass);
-        border: 1px solid var(--border-subtle);
-        border-radius: 100px;
-        font-family: var(--font-mono);
-        font-size: 9.5px;
-        color: var(--text-secondary);
-        letter-spacing: 0.5px;
-      }
-      .badge-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--purple-400);
-        animation: pulse-dot 2s ease-in-out infinite;
-      }
-      @keyframes pulse-dot {
-        0%,
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.5;
-          transform: scale(0.7);
-        }
-      }
-
-      /* ── MINI STATS ── */
-      .stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-bottom: 16px;
-      }
-      .stat-tile {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 14px 16px;
-        backdrop-filter: blur(12px);
-        box-shadow: var(--shadow-card);
-        position: relative;
-        overflow: hidden;
-      }
-      .stat-tile::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(139, 92, 246, 0.3),
-          transparent
-        );
-      }
-      .stat-label {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 4px;
-      }
-      .stat-value {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-      }
-      .stat-value.highlight {
-        color: var(--purple-400);
-      }
-      .stat-value.mono {
-        font-family: var(--font-mono);
-        font-size: 13px;
-        font-weight: 400;
-      }
-
-      /* ── SCANNER ── */
-      .scanner-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-xl);
-        padding: 24px 20px;
-        backdrop-filter: blur(16px);
-        box-shadow: var(--shadow-card);
-        margin-bottom: 14px;
-        position: relative;
-        overflow: hidden;
-      }
-      .scanner-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(139, 92, 246, 0.5),
-          transparent
-        );
-      }
-      .scanner-label {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 2px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        text-align: center;
-        margin-bottom: 18px;
-      }
-
-      .qr-frame-wrap {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 1;
-        max-width: 300px;
-        margin: 0 auto 20px;
-      }
-      .qr-frame {
-        width: 100%;
-        height: 100%;
-        border-radius: var(--radius-lg);
-        background: rgba(0, 0, 0, 0.6);
-        position: relative;
-        overflow: hidden;
-        border: 1px solid var(--border-subtle);
-      }
-      .qr-frame.scanning {
-        box-shadow:
-          0 0 0 1px var(--border-glow),
-          0 0 30px rgba(139, 92, 246, 0.2);
-      }
-
-      .corner {
-        position: absolute;
-        width: 28px;
-        height: 28px;
-        z-index: 10;
-      }
-      .corner-tl {
-        top: 10px;
-        left: 10px;
-        border-top: 2.5px solid var(--purple-500);
-        border-left: 2.5px solid var(--purple-500);
-        border-radius: 6px 0 0 0;
-      }
-      .corner-tr {
-        top: 10px;
-        right: 10px;
-        border-top: 2.5px solid var(--purple-500);
-        border-right: 2.5px solid var(--purple-500);
-        border-radius: 0 6px 0 0;
-      }
-      .corner-bl {
-        bottom: 10px;
-        left: 10px;
-        border-bottom: 2.5px solid var(--purple-500);
-        border-left: 2.5px solid var(--purple-500);
-        border-radius: 0 0 0 6px;
-      }
-      .corner-br {
-        bottom: 10px;
-        right: 10px;
-        border-bottom: 2.5px solid var(--purple-500);
-        border-right: 2.5px solid var(--purple-500);
-        border-radius: 0 0 6px 0;
-      }
-
-      .scan-line {
-        position: absolute;
-        left: 10%;
-        right: 10%;
-        height: 2px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--purple-neon),
-          transparent
-        );
-        box-shadow: 0 0 8px var(--purple-glow);
-        border-radius: 2px;
-        z-index: 8;
-        animation: scan-move 2s ease-in-out infinite;
-      }
-      @keyframes scan-move {
-        0%,
-        100% {
-          top: 15%;
-          opacity: 0.8;
-        }
-        50% {
-          top: 80%;
-          opacity: 1;
-        }
-      }
-
-      .scanner-idle {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        z-index: 5;
-      }
-      .idle-icon {
-        width: 56px;
-        height: 56px;
-        border: 2px solid var(--border-subtle);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-muted);
-      }
-      .idle-text {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--text-muted);
-        letter-spacing: 1px;
-      }
-
-      /* ── html5-qrcode cleanup ── */
-      #qr-reader,
-      #qr-reader-face {
-        width: 100% !important;
-        height: 100% !important;
-      }
-      #qr-reader video,
-      #qr-reader-face video {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-      }
-      #qr-reader img,
-      #qr-reader-face img,
-      #qr-reader button,
-      #qr-reader-face button,
-      #qr-reader__dashboard,
-      #qr-reader-face__dashboard {
-        display: none !important;
-      }
-
-      /* ── MODE TOGGLE ── */
-      .mode-toggle {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: var(--radius-md);
-        padding: 4px;
-        border: 1px solid var(--border-subtle);
-      }
-      .mode-btn {
-        flex: 1;
-        padding: 9px 8px;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-family: var(--font-display);
-        font-size: 12px;
-        font-weight: 600;
-        border-radius: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 5px;
-        transition: all 0.2s;
-      }
-      .mode-btn svg {
-        width: 14px;
-        height: 14px;
-      }
-      .mode-btn.active {
-        background: rgba(139, 92, 246, 0.18);
-        color: var(--purple-300);
-      }
-
-      /* ── FACE ── */
-      .face-frame-wrap {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 1;
-        max-width: 260px;
-        margin: 0 auto 12px;
-      }
-      .face-row {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-        margin-bottom: 14px;
-      }
-      .face-row .face-frame-wrap {
-        max-width: 120px;
-        flex-shrink: 0;
-        margin: 0;
-      }
-      .face-row .qr-frame-wrap {
-        flex: 1;
-        margin: 0;
-      }
-      .face-frame {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.6);
-        position: relative;
-        overflow: hidden;
-        border: 2px solid var(--border-subtle);
-      }
-      .face-frame.verifying {
-        border-color: var(--purple-500);
-        box-shadow:
-          0 0 0 4px rgba(139, 92, 246, 0.15),
-          0 0 30px rgba(139, 92, 246, 0.3);
-      }
-      .face-frame.verified {
-        border-color: var(--green-500);
-        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
-      }
-      #face-video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 50%;
-      }
-      .face-scan-ring {
-        position: absolute;
-        inset: -4px;
-        border-radius: 50%;
-        border: 2px dashed rgba(139, 92, 246, 0.4);
-        animation: rotate-ring 4s linear infinite;
-        pointer-events: none;
-      }
-      @keyframes rotate-ring {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .face-overlay-msg {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        text-align: center;
-        color: var(--text-muted);
-        margin-bottom: 12px;
-        letter-spacing: 1px;
-      }
-
-      /* ── STATUS CARD ── */
-      .status-card {
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        margin-bottom: 14px;
-        backdrop-filter: blur(12px);
-        border: 1px solid transparent;
-        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-      }
-      .status-card.state-idle {
-        background: var(--bg-card);
-        border-color: var(--border-subtle);
-        box-shadow: var(--shadow-card);
-      }
-      .status-card.state-processing {
-        background: rgba(139, 92, 246, 0.08);
-        border-color: rgba(139, 92, 246, 0.3);
-        box-shadow: 0 4px 32px rgba(139, 92, 246, 0.2);
-      }
-      .status-card.state-success {
-        background: rgba(34, 197, 94, 0.07);
-        border-color: rgba(34, 197, 94, 0.3);
-        box-shadow: 0 4px 32px rgba(34, 197, 94, 0.2);
-      }
-      .status-card.state-error {
-        background: rgba(239, 68, 68, 0.07);
-        border-color: rgba(239, 68, 68, 0.3);
-        box-shadow: 0 4px 32px rgba(239, 68, 68, 0.2);
-      }
-      .status-card.state-warning {
-        background: rgba(251, 191, 36, 0.07);
-        border-color: rgba(251, 191, 36, 0.3);
-        box-shadow: 0 4px 32px rgba(251, 191, 36, 0.15);
-      }
-      .status-inner {
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-      }
-      .status-icon-wrap {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        transition: background 0.3s;
-      }
-      .state-idle .status-icon-wrap {
-        background: rgba(139, 92, 246, 0.12);
-      }
-      .state-processing .status-icon-wrap {
-        background: rgba(139, 92, 246, 0.18);
-      }
-      .state-success .status-icon-wrap {
-        background: rgba(34, 197, 94, 0.15);
-      }
-      .state-error .status-icon-wrap {
-        background: rgba(239, 68, 68, 0.15);
-      }
-      .state-warning .status-icon-wrap {
-        background: rgba(251, 191, 36, 0.15);
-      }
-      .status-icon {
-        width: 22px;
-        height: 22px;
-        transition: color 0.3s;
-      }
-      .state-idle .status-icon {
-        color: var(--purple-400);
-      }
-      .state-processing .status-icon {
-        color: var(--purple-neon);
-        animation: spin 1s linear infinite;
-      }
-      .state-success .status-icon {
-        color: var(--green-400);
-      }
-      .state-error .status-icon {
-        color: var(--red-400);
-      }
-      .state-warning .status-icon {
-        color: var(--amber-400);
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .status-content {
-        flex: 1;
-        min-width: 0;
-      }
-      .status-title {
-        font-size: 15px;
-        font-weight: 700;
-        margin-bottom: 3px;
-        transition: color 0.3s;
-      }
-      .state-idle .status-title {
-        color: var(--text-secondary);
-      }
-      .state-processing .status-title {
-        color: var(--purple-300);
-      }
-      .state-success .status-title {
-        color: var(--green-400);
-      }
-      .state-error .status-title {
-        color: var(--red-400);
-      }
-      .state-warning .status-title {
-        color: var(--amber-400);
-      }
-      .status-message {
-        font-size: 13px;
-        color: var(--text-muted);
-        line-height: 1.4;
-      }
-      .user-result {
-        margin-top: 14px;
-        padding-top: 14px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        display: none;
-      }
-      .user-result.visible {
-        display: block;
-      }
-      .user-name {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 2px;
-      }
-      .user-email {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-      .action-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 8px;
-        padding: 5px 12px;
-        border-radius: 100px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-      }
-      .action-badge.in {
-        background: rgba(34, 197, 94, 0.15);
-        color: var(--green-400);
-        border: 1px solid rgba(34, 197, 94, 0.2);
-      }
-      .action-badge.out {
-        background: rgba(139, 92, 246, 0.15);
-        color: var(--purple-400);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-      }
-
-      /* ── DASHBOARD ── */
-      .dash-header {
-        padding: 22px 0 16px;
+      /* ── TOPBAR ── */
+      .topbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-      }
-      .dash-title {
-        font-size: 1.3rem;
-        font-weight: 800;
-        color: var(--purple-300);
-      }
-      .dash-sub {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        letter-spacing: 1px;
-      }
-
-      .dash-stat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-bottom: 14px;
-      }
-      @media (min-width: 400px) {
-        .dash-stat-grid {
-          grid-template-columns: 1fr 1fr 1fr 1fr;
-        }
-      }
-      .dash-stat {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 16px 14px;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-      }
-      .dash-stat::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-      }
-      .dash-stat.purple::before {
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--purple-500),
-          transparent
-        );
-      }
-      .dash-stat.green::before {
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--green-500),
-          transparent
-        );
-      }
-      .dash-stat.red::before {
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--red-500),
-          transparent
-        );
-      }
-      .dash-stat.amber::before {
-        background: linear-gradient(
-          90deg,
-          transparent,
-          var(--amber-400),
-          transparent
-        );
-      }
-      .ds-label {
-        font-family: var(--font-mono);
-        font-size: 8.5px;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-      }
-      .ds-val {
-        font-size: 1.7rem;
-        font-weight: 800;
-        font-family: var(--font-mono);
-        line-height: 1;
-      }
-      .dash-stat.purple .ds-val {
-        color: var(--purple-300);
-      }
-      .dash-stat.green .ds-val {
-        color: var(--green-400);
-      }
-      .dash-stat.red .ds-val {
-        color: var(--red-400);
-      }
-      .dash-stat.amber .ds-val {
-        color: var(--amber-400);
-      }
-
-      /* Skeleton shimmer */
-      .ds-val.loading,
-      .skeleton {
-        display: block;
-        height: 1.7rem;
-        border-radius: 6px;
-        background: linear-gradient(
-          90deg,
-          rgba(139, 92, 246, 0.08) 25%,
-          rgba(139, 92, 246, 0.18) 50%,
-          rgba(139, 92, 246, 0.08) 75%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 1.4s ease-in-out infinite;
-      }
-      @keyframes shimmer {
-        0% {
-          background-position: 200% 0;
-        }
-        100% {
-          background-position: -200% 0;
-        }
-      }
-
-      /* ── LOG LIST ── */
-      .log-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .log-item {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 12px 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: border-color 0.2s;
-      }
-      .log-item:hover {
-        border-color: var(--border-glow);
-      }
-      .log-badge {
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 10px;
-        font-weight: 700;
-        font-family: var(--font-mono);
-        flex-shrink: 0;
-      }
-      .log-badge.IN {
-        background: rgba(34, 197, 94, 0.12);
-        color: var(--green-400);
-      }
-      .log-badge.OUT {
-        background: rgba(239, 68, 68, 0.12);
-        color: var(--red-400);
-      }
-      .log-name {
-        font-size: 0.9rem;
-        font-weight: 600;
-        flex: 1;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .log-time {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        font-family: var(--font-mono);
-        text-align: right;
-        white-space: nowrap;
-      }
-      .log-uid {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        color: var(--text-muted);
-      }
-      .empty-text {
-        text-align: center;
-        color: var(--text-muted);
-        padding: 24px;
-        font-size: 0.85rem;
-      }
-
-      /* Error box — hidden by default */
-      .error-box {
-        display: none;
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: var(--radius-md);
-        padding: 14px;
-        color: var(--red-400);
-        font-size: 0.85rem;
+        padding: 14px 0 12px;
+        border-bottom: 1px solid var(--border);
         margin-bottom: 16px;
-        line-height: 1.4;
+      }
+      .topbar-logo { display:flex; align-items:center; gap:8px; }
+      .logo-mark {
+        width:32px; height:32px;
+        background:var(--accent); border-radius:9px;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 2px 10px var(--accent-glow);
+      }
+      .logo-mark svg { width:16px; height:16px; }
+      .logo-name { font-size:16px; font-weight:800; color:var(--text); letter-spacing:-0.3px; }
+      .logo-name span { color:var(--accent); }
+      .topbar-right { display:flex; align-items:center; gap:8px; }
+      .badge-live {
+        display:flex; align-items:center; gap:4px;
+        padding:3px 8px;
+        background:var(--bg-card); border:1px solid var(--border);
+        border-radius:20px;
+        font-family:var(--mono); font-size:9px; color:var(--text-faint);
+      }
+      .live-dot { width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2s infinite; }
+      @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+      /* ── MINI STATS ── */
+      .stats-row {
+        display:grid;
+        grid-template-columns:1fr 1fr 1fr;
+        gap:8px;
+        margin-bottom:16px;
+      }
+      .stat-tile {
+        background:var(--bg-card);
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        padding:12px;
+        box-shadow:var(--shadow);
+        text-align:center;
+        position:relative; overflow:hidden;
+      }
+      .stat-tile::before { content:'';position:absolute;top:0;left:0;right:0;height:2px; }
+      .st-a::before { background:var(--accent); }
+      .st-g::before { background:var(--green);  }
+      .st-r::before { background:var(--red);    }
+      .stat-label { font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px; }
+      .stat-val   { font-family:var(--mono);font-size:18px;font-weight:500;color:var(--text);line-height:1; }
+      .stat-val.a { color:var(--accent); }
+      .stat-val.g { color:var(--green);  }
+
+      /* ── MODE TOGGLE ── */
+      .mode-toggle {
+        display:flex; gap:6px; margin-bottom:14px;
+        background:var(--bg-card); border:1px solid var(--border);
+        border-radius:var(--r); padding:4px;
+        box-shadow:var(--shadow);
+      }
+      .mode-btn {
+        flex:1; padding:9px 6px;
+        background:none; border:none;
+        color:var(--text-faint);
+        font-family:var(--font); font-size:12px; font-weight:600;
+        border-radius:9px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:5px;
+        transition:all 0.2s;
+      }
+      .mode-btn svg { width:13px;height:13px; }
+      .mode-btn.active { background:var(--accent-light); color:var(--accent); }
+
+      /* ── SCANNER CARD ── */
+      .scanner-card {
+        background:var(--bg-card);
+        border:1px solid var(--border);
+        border-radius:var(--rx);
+        padding:20px 18px;
+        box-shadow:var(--shadow-lg);
+        margin-bottom:12px;
+      }
+      .scanner-label {
+        font-family:var(--mono);
+        font-size:9px; letter-spacing:2px; text-transform:uppercase;
+        color:var(--text-faint); text-align:center; margin-bottom:14px;
       }
 
-      /* ── REPORTS ── */
-      .report-controls {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
+      /* QR frame */
+      .qr-frame-wrap {
+        position:relative; width:100%; aspect-ratio:1;
+        max-width:290px; margin:0 auto 16px;
       }
-      .report-period-btn {
-        flex: 1;
-        min-width: 80px;
-        padding: 10px 8px;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid var(--border-subtle);
-        color: var(--text-muted);
-        font-family: var(--font-display);
-        font-size: 12px;
-        font-weight: 600;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        transition: all 0.2s;
+      .qr-frame {
+        width:100%;height:100%;
+        border-radius:var(--rl);
+        background:rgba(0,0,0,0.03);
+        border:1px solid var(--border);
+        position:relative; overflow:hidden;
+        transition:border-color 0.3s, box-shadow 0.3s;
       }
-      .report-period-btn.active {
-        background: rgba(139, 92, 246, 0.18);
-        border-color: rgba(139, 92, 246, 0.4);
-        color: var(--purple-300);
+      .qr-frame.scanning {
+        border-color:var(--accent-border);
+        box-shadow:0 0 0 2px var(--accent-light), 0 0 28px var(--accent-glow);
       }
-      .report-table-wrap {
-        overflow-x: auto;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-subtle);
+      .qr-frame.success {
+        border-color:var(--green-border);
+        box-shadow:0 0 0 2px var(--green-bg), 0 0 20px rgba(22,163,74,0.15);
       }
-      .report-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      .report-table th {
-        background: rgba(139, 92, 246, 0.1);
-        color: var(--purple-300);
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        padding: 10px 12px;
-        text-align: left;
-        border-bottom: 1px solid var(--border-subtle);
-      }
-      .report-table td {
-        padding: 11px 12px;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.05);
-        color: var(--text-secondary);
-        vertical-align: middle;
-      }
-      .report-table tr:last-child td {
-        border-bottom: none;
-      }
-      .report-table tr:hover td {
-        background: rgba(139, 92, 246, 0.04);
+      .qr-frame.error-state {
+        border-color:var(--red-border);
+        box-shadow:0 0 0 2px var(--red-bg), 0 0 20px rgba(220,38,38,0.12);
       }
 
-      /* Bar chart */
-      .bar-chart {
-        display: flex;
-        align-items: flex-end;
-        gap: 6px;
-        height: 90px;
-        overflow-x: auto;
-        padding-bottom: 4px;
+      /* corners */
+      .corner { position:absolute; width:26px; height:26px; z-index:10; }
+      .corner-tl { top:10px;left:10px; border-top:2px solid var(--accent); border-left:2px solid var(--accent); border-radius:6px 0 0 0; }
+      .corner-tr { top:10px;right:10px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); border-radius:0 6px 0 0; }
+      .corner-bl { bottom:10px;left:10px; border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); border-radius:0 0 0 6px; }
+      .corner-br { bottom:10px;right:10px; border-bottom:2px solid var(--accent); border-right:2px solid var(--accent); border-radius:0 0 6px 0; }
+      .scan-line {
+        position:absolute; left:12%; right:12%; height:2px; top:50%;
+        background:linear-gradient(90deg,transparent,var(--accent),transparent);
+        border-radius:2px; opacity:0;
+        animation:none;
       }
-      .bar-col {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-width: 32px;
-      }
-      .bar {
-        width: 100%;
-        border-radius: 4px 4px 0 0;
-        min-height: 2px;
-        transition: height 0.3s ease;
-      }
-      .in-bar {
-        background: rgba(34, 197, 94, 0.55);
-      }
-      .out-bar {
-        background: rgba(139, 92, 246, 0.55);
-      }
-      .bar-lbl {
-        font-family: var(--font-mono);
-        font-size: 8px;
-        color: var(--text-muted);
-        white-space: nowrap;
-      }
+      .qr-frame.scanning .scan-line { opacity:1; animation:scan-sweep 2s ease-in-out infinite; }
+      @keyframes scan-sweep { 0%{top:15%} 50%{top:85%} 100%{top:15%} }
 
-      /* Export button */
-      .export-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        background: rgba(139, 92, 246, 0.1);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-sm);
-        color: var(--purple-400);
-        font-family: var(--font-display);
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        letter-spacing: 0.3px;
+      /* idle overlay */
+      .scanner-idle {
+        position:absolute; inset:0;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+        background:rgba(247,245,240,0.95);
+        border-radius:var(--rl);
       }
-      .export-btn:hover {
-        background: rgba(139, 92, 246, 0.2);
-        border-color: var(--border-glow);
+      .idle-icon { color:var(--text-faint); }
+      .idle-text { font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--text-faint);text-transform:uppercase; }
+
+      /* html5-qrcode cleanup */
+      #qr-reader, #qr-reader-face {
+        width:100% !important; height:100% !important;
       }
-      .export-btn svg {
-        width: 13px;
-        height: 13px;
+      #qr-reader video, #qr-reader-face video {
+        width:100% !important; height:100% !important; object-fit:cover !important;
       }
+      #qr-reader img, #qr-reader-face img,
+      #qr-reader button, #qr-reader-face button,
+      #qr-reader__dashboard, #qr-reader-face__dashboard { display:none !important; }
+
+      /* ── SCANNER CONTROLS ── */
+      .scan-controls { display:flex; gap:8px; margin-top:4px; }
+      .btn {
+        flex:1; padding:11px 14px;
+        border:none; border-radius:var(--r);
+        font-family:var(--font); font-size:13px; font-weight:600;
+        cursor:pointer; transition:all 0.2s;
+        display:flex; align-items:center; justify-content:center; gap:6px;
+      }
+      .btn svg { width:15px;height:15px;flex-shrink:0; }
+      .btn-primary  { background:var(--accent); color:#fff; box-shadow:0 2px 12px var(--accent-glow); }
+      .btn-primary:hover  { background:#7a38d4; transform:translateY(-1px); }
+      .btn-secondary {
+        background:var(--bg-card); color:var(--text-muted);
+        border:1px solid var(--border); flex:0 0 auto; padding:11px 14px;
+      }
+      .btn-secondary:hover { border-color:var(--accent-border); color:var(--accent); }
+      .btn:disabled { opacity:0.4; cursor:not-allowed; transform:none !important; }
+      .btn-flip {
+        background:var(--bg-card); color:var(--text-muted);
+        border:1px solid var(--border);
+        padding:10px 14px; border-radius:var(--r);
+        font-family:var(--font); font-size:12px; font-weight:600;
+        cursor:pointer; transition:all 0.2s;
+        display:flex; align-items:center; gap:5px;
+      }
+      .btn-flip:hover { border-color:var(--accent-border); color:var(--accent); }
+      .btn-flip svg { width:14px;height:14px; }
+
+      /* ── FACE MODE ── */
+      .face-frame-wrap {
+        position:relative; width:100%; aspect-ratio:1;
+        max-width:240px; margin:0 auto 12px;
+      }
+      .face-frame {
+        width:100%;height:100%;
+        border-radius:50%;
+        background:rgba(0,0,0,0.03);
+        border:2px solid var(--border);
+        overflow:hidden; position:relative;
+        transition:border-color 0.3s, box-shadow 0.3s;
+      }
+      .face-frame.verifying { border-color:var(--accent-border); box-shadow:0 0 0 4px var(--accent-light), 0 0 28px var(--accent-glow); }
+      .face-frame.verified  { border-color:var(--green-border);  box-shadow:0 0 0 4px var(--green-bg), 0 0 20px rgba(22,163,74,0.15); }
+      #face-video { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+      .face-ring {
+        position:absolute; inset:-4px; border-radius:50%;
+        border:2px dashed var(--accent-border);
+        animation:rotate 4s linear infinite; pointer-events:none;
+      }
+      @keyframes rotate { to { transform:rotate(360deg); } }
+      .face-msg { font-family:var(--mono);font-size:11px;text-align:center;color:var(--text-faint);margin-bottom:12px;letter-spacing:1px; }
+
+      /* face+qr step 2 layout */
+      .face-qr-row { display:flex; gap:10px; align-items:flex-start; margin-bottom:12px; }
+      .face-qr-row .face-frame-wrap { max-width:110px;flex-shrink:0;margin:0; }
+      .face-qr-row .qr-frame-wrap   { flex:1;margin:0; }
+
+      /* ── STATUS CARD ── */
+      .status-card {
+        border-radius:var(--rl); padding:18px;
+        border:1px solid var(--border);
+        background:var(--bg-card);
+        box-shadow:var(--shadow);
+        margin-bottom:12px;
+        transition:all 0.3s;
+      }
+      .status-card.s-idle    { background:var(--bg-card); border-color:var(--border); }
+      .status-card.s-processing { background:var(--accent-light); border-color:var(--accent-border); }
+      .status-card.s-success { background:var(--green-bg); border-color:var(--green-border); }
+      .status-card.s-error   { background:var(--red-bg);   border-color:var(--red-border); }
+      .status-card.s-warning { background:var(--amber-bg); border-color:var(--amber-border); }
+
+      .status-inner { display:flex; align-items:flex-start; gap:12px; }
+      .status-icon-wrap {
+        width:40px;height:40px; border-radius:11px;
+        display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      }
+      .s-idle       .status-icon-wrap { background:var(--accent-light); }
+      .s-processing .status-icon-wrap { background:rgba(142,68,236,0.15); }
+      .s-success    .status-icon-wrap { background:rgba(22,163,74,0.15); }
+      .s-error      .status-icon-wrap { background:rgba(220,38,38,0.12); }
+      .s-warning    .status-icon-wrap { background:rgba(217,119,6,0.12); }
+      .status-icon { width:20px;height:20px;transition:color 0.3s; }
+      .s-idle       .status-icon { color:var(--accent); }
+      .s-processing .status-icon { color:var(--accent); animation:spin 1s linear infinite; }
+      .s-success    .status-icon { color:var(--green); }
+      .s-error      .status-icon { color:var(--red); }
+      .s-warning    .status-icon { color:var(--amber); }
+      @keyframes spin { to { transform:rotate(360deg); } }
+
+      .status-content { flex:1; min-width:0; }
+      .status-title { font-size:14px;font-weight:700;margin-bottom:3px; }
+      .s-idle       .status-title { color:var(--text-muted); }
+      .s-processing .status-title { color:var(--accent); }
+      .s-success    .status-title { color:var(--green); }
+      .s-error      .status-title { color:var(--red); }
+      .s-warning    .status-title { color:var(--amber); }
+      .status-msg { font-size:12.5px;color:var(--text-muted);line-height:1.4; }
+
+      .user-result {
+        margin-top:12px;padding-top:12px;
+        border-top:1px solid rgba(0,0,0,0.06);
+        display:none;
+      }
+      .user-result.visible { display:block; }
+      .user-name  { font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px; }
+      .user-email { font-family:var(--mono);font-size:10px;color:var(--text-faint); }
+      .action-badge {
+        display:inline-flex;align-items:center;gap:5px;
+        margin-top:8px;padding:4px 11px;border-radius:20px;
+        font-size:11px;font-weight:700;letter-spacing:0.4px;
+      }
+      .action-badge.in  { background:var(--green-bg); color:var(--green); }
+      .action-badge.out { background:var(--accent-light); color:var(--accent); }
+
+      /* ── SUCCESS OVERLAY ── */
+      .success-overlay {
+        position:fixed; inset:0; z-index:200;
+        background:rgba(247,245,240,0.96);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        text-align:center; padding:32px;
+        opacity:0; pointer-events:none;
+        transition:opacity 0.35s;
+      }
+      .success-overlay.show { opacity:1; pointer-events:all; }
+      .success-circle {
+        width:88px;height:88px;
+        border-radius:50%;
+        background:var(--green-bg);
+        border:2px solid var(--green-border);
+        display:flex;align-items:center;justify-content:center;
+        margin-bottom:20px;
+        animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      @keyframes pop { from{transform:scale(0.3);opacity:0} to{transform:scale(1);opacity:1} }
+      .success-circle svg { width:44px;height:44px;color:var(--green); }
+      .success-name  { font-size:24px;font-weight:800;color:var(--text);margin-bottom:6px; }
+      .success-action { font-size:15px;font-weight:600;margin-bottom:6px; }
+      .success-action.in  { color:var(--green); }
+      .success-action.out { color:var(--accent); }
+      .success-note { font-family:var(--mono);font-size:11px;color:var(--text-faint); }
 
       /* ── TOAST ── */
       .toast {
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%) translateY(20px);
-        background: rgba(17, 17, 40, 0.97);
-        border: 1px solid var(--border-subtle);
-        border-radius: 100px;
-        padding: 10px 22px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-primary);
-        backdrop-filter: blur(16px);
-        z-index: 9999;
-        opacity: 0;
-        transition:
-          opacity 0.25s,
-          transform 0.25s;
-        pointer-events: none;
-        white-space: nowrap;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        position:fixed;bottom:20px;left:50%;
+        transform:translateX(-50%) translateY(12px);
+        background:var(--text);color:#fff;
+        border-radius:100px;padding:8px 18px;
+        font-size:13px;font-weight:600;
+        z-index:9999;opacity:0;
+        transition:opacity 0.22s,transform 0.22s;
+        pointer-events:none;white-space:nowrap;
+        box-shadow:0 4px 20px rgba(0,0,0,0.2);
       }
-      .toast.show {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-
-      /* ── FOOTER ── */
-      .footer {
-        text-align: center;
-        padding: 24px 0 8px;
-      }
-      .footer-text {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-        letter-spacing: 0.5px;
-        line-height: 1.6;
-      }
-      .footer-highlight {
-        color: var(--purple-400);
-      }
+      .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
 
       /* ── RESPONSIVE ── */
-      @media (max-width: 380px) {
-        .app-container {
-          padding: 0 12px 100px;
-        }
-        .scanner-card {
-          padding: 18px 14px;
-        }
-        .qr-frame-wrap {
-          max-width: 260px;
-        }
-        .logo-text {
-          font-size: 22px;
-        }
-        .tab-btn {
-          font-size: 10px;
-          padding: 12px 4px;
-        }
+      @media(max-width:380px) {
+        .app { padding:0 12px 24px; }
+        .qr-frame-wrap { max-width:260px; }
       }
     </style>
   </head>
   <body>
-    <!-- ── TABS ── -->
-    <nav class="tab-nav">
-      <button
-        class="tab-btn active"
-        id="tab-scanner"
-        onclick="switchTab('scanner')"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <path d="M14 14h3v3M17 17h4M14 21h3" /></svg
-        >Scanner
-      </button>
-      <button
-        class="tab-btn"
-        id="tab-dashboard"
-        onclick="switchTab('dashboard')"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <rect x="3" y="3" width="7" height="9" rx="1" />
-          <rect x="14" y="3" width="7" height="5" rx="1" />
-          <rect x="14" y="12" width="7" height="9" rx="1" />
-          <rect x="3" y="16" width="7" height="5" rx="1" /></svg
-        >Dashboard
-      </button>
-      <button class="tab-btn" id="tab-reports" onclick="switchTab('reports')">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="14" /></svg
-        >Reports
-      </button>
-    </nav>
+    <div class="app">
 
-    <!-- ══════════════ TAB: SCANNER ══════════════ -->
-    <div class="page active" id="page-scanner">
-      <div class="app-container">
-        <header class="header">
-          <div class="logo-wrap">
-            <div class="logo-icon">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                stroke-width="2"
-              >
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <path d="M14 14h3v3M17 17h4M14 21h3" />
-              </svg>
-            </div>
-            <div class="logo-text">ScanPass</div>
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="topbar-logo">
+          <div class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h3v3M17 17h4M14 21h3"/>
+            </svg>
           </div>
-          <div class="header-subtitle">ID Verification Portal</div>
-          <div class="badges">
-            <div class="badge"><span class="badge-dot"></span>v3.1</div>
-            <div class="badge"><span class="badge-dot"></span>Real-Time</div>
-            <div class="badge"><span class="badge-dot"></span>Smart IN/OUT</div>
-          </div>
-        </header>
-
-        <!-- Mini stats -->
-        <div class="stats-grid">
-          <div class="stat-tile">
-            <div class="stat-label">Current Time</div>
-            <div class="stat-value mono highlight" id="stat-time">--:--:--</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-label">Scans Today</div>
-            <div class="stat-value highlight" id="stat-scans">–</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-label">Present Now</div>
-            <div class="stat-value" id="stat-present">–</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-label">Portal</div>
-            <div
-              class="stat-value mono"
-              style="
-                font-size: 11px;
-                padding-top: 2px;
-                color: var(--purple-400);
-              "
-              id="stat-portal"
-            >
-              AntBox
-            </div>
-          </div>
+          <div class="logo-name">Scan<span>Pass</span></div>
         </div>
-
-        <!-- Mode toggle -->
-        <div class="mode-toggle">
-          <button
-            class="mode-btn active"
-            id="mode-qr-btn"
-            onclick="setMode('qr')"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <path d="M14 14h3v3M17 17h4M14 21h3" /></svg
-            >QR Only
-          </button>
-          <button class="mode-btn" id="mode-face-btn" onclick="setMode('face')">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg
-            >Face 
-          </button>
+        <div class="topbar-right">
+          <div class="badge-live"><span class="live-dot"></span>Scanner</div>
         </div>
-
-        <!-- Scanner Card -->
-        <div class="scanner-card" id="scanner-card">
-          <!-- QR-ONLY MODE -->
-          <div id="qr-mode-ui">
-            <div class="scanner-label">◈ QR VERIFICATION SCANNER ◈</div>
-            <div class="qr-frame-wrap">
-              <div class="qr-frame" id="qr-frame">
-                <div class="corner corner-tl"></div>
-                <div class="corner corner-tr"></div>
-                <div class="corner corner-bl"></div>
-                <div class="corner corner-br"></div>
-                <div class="scan-line" id="scan-line"></div>
-                <div id="qr-reader"></div>
-                <div class="scanner-idle" id="scanner-idle">
-                  <div class="idle-icon">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      width="28"
-                      height="28"
-                    >
-                      <rect x="3" y="3" width="7" height="7" rx="1" />
-                      <rect x="14" y="3" width="7" height="7" rx="1" />
-                      <rect x="3" y="14" width="7" height="7" rx="1" />
-                      <path d="M14 14h3v3M17 17h4M14 21h3" />
-                    </svg>
-                  </div>
-                  <div class="idle-text">Camera is off</div>
-                </div>
-              </div>
-            </div>
-            <div class="btn-group">
-              <button
-                class="btn btn-primary"
-                id="btn-start"
-                onclick="startCamera()"
-              >
-                Enable Camera
-              </button>
-              <button
-                class="btn btn-secondary hidden"
-                id="btn-stop"
-                onclick="stopCamera()"
-              >
-                Stop
-              </button>
-            </div>
-          </div>
-
-          <!-- FACE + QR MODE -->
-          <div id="face-mode-ui" class="hidden">
-            <div class="scanner-label">◈ FACE VERIFICATION ◈</div>
-
-            <!-- Step 1: face capture -->
-            <div id="face-step-1">
-              <div class="face-frame-wrap">
-                <div class="face-frame" id="face-frame">
-                  <video id="face-video" autoplay muted playsinline></video>
-                  <div class="face-scan-ring"></div>
-                </div>
-              </div>
-              <div class="face-overlay-msg" id="face-msg">
-                Position face in circle — auto-captures in 3s
-              </div>
-              <canvas id="face-canvas" style="display: none"></canvas>
-              <div class="btn-group">
-                <button
-                  class="btn btn-primary"
-                  id="btn-face-start"
-                  onclick="startFaceCapture()"
-                >
-                  Start Verification
-                </button>
-                <button
-                  class="btn btn-secondary hidden"
-                  id="btn-face-stop"
-                  onclick="cancelFaceCapture()"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-            <!-- Step 2: face preview  -->
-            <div id="face-step-2" class="hidden">
-              <div
-                class="pill pill-green"
-                style="margin: 0 auto 14px; width: fit-content"
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                >
-                  <polyline points="20 6 9 17 4 12" /></svg
-                >Face Captured
-              </div>
-              <div class="face-qr-row">
-                <div class="face-frame-wrap">
-                  <div class="face-frame verified">
-                    <canvas
-                      id="face-preview-canvas"
-                      style="
-                        width: 100%;
-                        height: 100%;
-                        border-radius: 50%;
-                        object-fit: cover;
-                        display: block;
-                      "
-                    ></canvas>
-                  </div>
-                </div>
-                <div class="qr-frame-wrap">
-                  <div class="qr-frame scanning">
-                    <div class="corner corner-tl"></div>
-                    <div class="corner corner-tr"></div>
-                    <div class="corner corner-bl"></div>
-                    <div class="corner corner-br"></div>
-                    <div class="scan-line"></div>
-                    <div id="qr-reader-face"></div>
-                  </div>
-                </div>
-              </div>
-              <button
-                class="btn btn-ghost"
-                style="width: 100%; margin-top: 8px"
-                onclick="resetFaceMode()"
-              >
-                ↩ Restart
-              </button>
-            </div>
-          </div>
-        </div>
-        <!-- /scanner-card -->
-
-        <!-- Status Card -->
-        <div class="status-card state-idle" id="status-card">
-          <div class="status-inner">
-            <div class="status-icon-wrap">
-              <svg
-                class="status-icon"
-                id="status-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v4l3 3" />
-              </svg>
-            </div>
-            <div class="status-content">
-              <div class="status-title" id="status-title">Ready to Scan</div>
-              <div class="status-message" id="status-msg">
-                Enable camera to start scanning QR codes
-              </div>
-              <div class="user-result" id="user-result">
-                <div class="user-name" id="result-name">—</div>
-                <div class="user-email" id="result-email">—</div>
-                <div class="action-badge" id="result-badge">—</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <footer class="footer">
-          <div class="footer-text">
-            Built with <span class="footer-highlight">Google Apps Script</span
-            ><br />ScanPass v3.1 · AntBox Secure Attendance
-          </div>
-        </footer>
       </div>
-    </div>
-    <!-- /page-scanner -->
 
-    <!-- ══════════════ TAB: DASHBOARD ══════════════ -->
-    <div class="page" id="page-dashboard">
-      <div class="app-container">
-        <div class="dash-header">
-          <div>
-            <div class="dash-title">Dashboard</div>
-            <div class="dash-sub" id="dash-portal-name">Admin Overview</div>
-          </div>
-          <button class="btn btn-ghost" onclick="loadDashboard()">
-            ↻ Refresh
-          </button>
+      <!-- Mini stats -->
+      <div class="stats-row">
+        <div class="stat-tile st-a">
+          <div class="stat-label">Present</div>
+          <div class="stat-val a" id="s-present">–</div>
         </div>
-
-        <div class="error-box" id="dash-error"></div>
-
-        <div class="section-label">Live Stats</div>
-        <div class="dash-stat-grid">
-          <div class="dash-stat purple">
-            <div class="ds-label">Total Users</div>
-            <div class="ds-val" id="ds-total">—</div>
-          </div>
-          <div class="dash-stat green">
-            <div class="ds-label">Present Now</div>
-            <div class="ds-val" id="ds-present">—</div>
-          </div>
-          <div class="dash-stat red">
-            <div class="ds-label">Absent</div>
-            <div class="ds-val" id="ds-absent">—</div>
-          </div>
-          <div class="dash-stat amber">
-            <div class="ds-label">Scans Today</div>
-            <div class="ds-val" id="ds-scans">—</div>
-          </div>
+        <div class="stat-tile st-g">
+          <div class="stat-label">Scans Today</div>
+          <div class="stat-val g" id="s-scans">–</div>
         </div>
-
-        <div class="section-label">Recent Activity</div>
-        <div class="log-list" id="dash-log-list">
-          <div class="empty-text">Loading activity…</div>
+        <div class="stat-tile">
+          <div class="stat-label">Users</div>
+          <div class="stat-val" id="s-total">–</div>
         </div>
-
-        <footer class="footer" style="margin-top: 20px">
-          <div class="footer-text">
-            ScanPass v3.1 · <span class="footer-highlight">AntBox</span>
-          </div>
-        </footer>
       </div>
-    </div>
-    <!-- /page-dashboard -->
 
-    <!-- ══════════════ TAB: REPORTS ══════════════ -->
-    <div class="page" id="page-reports">
-      <div class="app-container">
-        <div class="dash-header">
-          <div>
-            <div class="dash-title">Reports</div>
-            <div class="dash-sub">Daily &amp; Weekly Analytics</div>
-          </div>
-          <button class="btn btn-ghost" onclick="loadReport()">
-            ↻ Refresh
-          </button>
-        </div>
+      <!-- Mode toggle -->
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-qr-btn" onclick="setMode('qr')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M17 17h4M14 21h3"/>
+          </svg>QR Only
+        </button>
+        <button class="mode-btn" id="mode-face-btn" onclick="setMode('face')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+          </svg>Face + QR
+        </button>
+      </div>
 
-        <div class="section-label">Time Period</div>
-        <div class="report-controls">
-          <button
-            class="report-period-btn active"
-            id="rp-today"
-            onclick="setPeriod('today')"
-          >
-            Today
-          </button>
-          <button
-            class="report-period-btn"
-            id="rp-week"
-            onclick="setPeriod('week')"
-          >
-            This Week
-          </button>
-          <button
-            class="report-period-btn"
-            id="rp-month"
-            onclick="setPeriod('month')"
-          >
-            This Month
-          </button>
-        </div>
-
-        <div class="dash-stat-grid" style="grid-template-columns: 1fr 1fr 1fr">
-          <div class="dash-stat green">
-            <div class="ds-label">Total IN</div>
-            <div class="ds-val" id="rp-in">—</div>
-          </div>
-          <div class="dash-stat red">
-            <div class="ds-label">Total OUT</div>
-            <div class="ds-val" id="rp-out">—</div>
-          </div>
-          <div class="dash-stat purple">
-            <div class="ds-label">Unique Users</div>
-            <div class="ds-val" id="rp-unique">—</div>
-          </div>
-        </div>
-
-        <div class="section-label">Daily Scan Activity</div>
-        <div class="card" style="padding: 16px">
-          <div
-            style="
-              display: flex;
-              gap: 12px;
-              margin-bottom: 8px;
-              font-family: var(--font-mono);
-              font-size: 10px;
-              color: var(--text-muted);
-            "
-          >
-            <span style="display: flex; align-items: center; gap: 4px"
-              ><span
-                style="
-                  width: 8px;
-                  height: 8px;
-                  border-radius: 2px;
-                  background: rgba(34, 197, 94, 0.7);
-                  display: inline-block;
-                "
-              ></span
-              >IN</span
-            >
-            <span style="display: flex; align-items: center; gap: 4px"
-              ><span
-                style="
-                  width: 8px;
-                  height: 8px;
-                  border-radius: 2px;
-                  background: rgba(139, 92, 246, 0.7);
-                  display: inline-block;
-                "
-              ></span
-              >OUT</span
-            >
-          </div>
-          <div class="bar-chart" id="bar-chart">
-            <div
-              class="empty-text"
-              style="padding: 0; width: 100%; font-size: 11px"
-            >
-              Loading chart…
+      <!-- ── QR MODE ── -->
+      <div id="qr-mode-ui">
+        <div class="scanner-card">
+          <div class="scanner-label">◈ QR Verification Scanner ◈</div>
+          <div class="qr-frame-wrap">
+            <div class="qr-frame" id="qr-frame">
+              <div class="corner corner-tl"></div>
+              <div class="corner corner-tr"></div>
+              <div class="corner corner-bl"></div>
+              <div class="corner corner-br"></div>
+              <div class="scan-line" id="scan-line"></div>
+              <div id="qr-reader"></div>
+              <div class="scanner-idle" id="scanner-idle">
+                <div class="idle-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M17 17h4M14 21h3"/>
+                  </svg>
+                </div>
+                <div class="idle-text">Camera off</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="section-label">Log Details</div>
-        <div class="card" style="padding: 0">
-          <div class="report-table-wrap">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Action</th>
-                  <th>Time</th>
-                  <th>Device</th>
-                </tr>
-              </thead>
-              <tbody id="report-tbody">
-                <tr>
-                  <td colspan="4" class="empty-text">Loading…</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div
-            style="
-              padding: 12px 14px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              flex-wrap: wrap;
-              gap: 8px;
-            "
-          >
-            <span
-              style="
-                font-family: var(--font-mono);
-                font-size: 10px;
-                color: var(--text-muted);
-              "
-              id="report-count"
-              >0 records</span
-            >
-            <button class="export-btn" onclick="exportCSV()">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" /></svg
-              >Export CSV
+          <!-- controls row: start/stop + flip -->
+          <div class="scan-controls">
+            <button class="btn btn-primary" id="btn-start" onclick="startCamera()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>Enable Camera
+            </button>
+            <button class="btn btn-secondary hidden" id="btn-stop" onclick="stopCamera()">Stop</button>
+            <button class="btn-flip hidden" id="btn-flip" onclick="flipCamera()" title="Flip Camera">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+              </svg>Flip
             </button>
           </div>
         </div>
-
-        <footer class="footer" style="margin-top: 20px">
-          <div class="footer-text">
-            ScanPass v3.1 · <span class="footer-highlight">AntBox</span>
-          </div>
-        </footer>
       </div>
+
+      <!-- ── FACE MODE ── -->
+      <div id="face-mode-ui" class="hidden">
+        <div class="scanner-card">
+          <div class="scanner-label">◈ Face Verification ◈</div>
+
+          <!-- Step 1: face capture -->
+          <div id="face-step-1">
+            <div class="face-frame-wrap">
+              <div class="face-frame" id="face-frame">
+                <video id="face-video" autoplay muted playsinline></video>
+                <div class="face-ring"></div>
+              </div>
+            </div>
+            <div class="face-msg" id="face-msg">Position face in circle — auto-captures in 3s</div>
+            <canvas id="face-canvas" style="display:none"></canvas>
+            <div class="scan-controls">
+              <button class="btn btn-primary" id="btn-face-start" onclick="startFaceCapture()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                </svg>Start Verification
+              </button>
+              <button class="btn btn-secondary hidden" id="btn-face-stop" onclick="cancelFaceCapture()">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Step 2: face preview + QR scan -->
+          <div id="face-step-2" class="hidden">
+            <div class="face-qr-row">
+              <div class="face-frame-wrap">
+                <div class="face-frame verified">
+                  <canvas id="face-preview-canvas" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block"></canvas>
+                </div>
+              </div>
+              <div class="qr-frame-wrap">
+                <div class="qr-frame scanning">
+                  <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+                  <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+                  <div class="scan-line"></div>
+                  <div id="qr-reader-face"></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="resetFaceMode()">↩ Restart</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Card -->
+      <div class="status-card s-idle" id="status-card">
+        <div class="status-inner">
+          <div class="status-icon-wrap">
+            <svg class="status-icon" id="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+          </div>
+          <div class="status-content">
+            <div class="status-title" id="status-title">Ready to Scan</div>
+            <div class="status-msg" id="status-msg">Enable camera to start scanning QR codes</div>
+            <div class="user-result" id="user-result">
+              <div class="user-name"  id="result-name">—</div>
+              <div class="user-email" id="result-email">—</div>
+              <div class="action-badge" id="result-badge">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /app -->
+
+    <!-- Success overlay -->
+    <div class="success-overlay" id="success-overlay">
+      <div class="success-circle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="success-name"  id="ov-name">Name</div>
+      <div class="success-action" id="ov-action">Marked IN</div>
+      <div class="success-note"  id="ov-note">Closing scanner…</div>
     </div>
-    <!-- /page-reports -->
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- ═══════════════════════════════════════════
-         JAVASCRIPT 
-    ═══════════════════════════════════════════ -->
+    <!-- ═══════════════════════ JS ═══════════════════════ -->
     <script>
-      "use strict";
+    "use strict";
 
-      /* ══════════════════════════════════════════
-   STATE — single source of truth
-══════════════════════════════════════════ */
-      const APP = {
-        qrScanner: null, // Html5Qrcode instance — QR-only mode
-        faceScanner: null, // Html5Qrcode instance — Face+QR step 2
-        faceStream: null, // MediaStream — front camera
-        faceImageData: null, // base64 JPEG from front camera
+    /* ── CONFIG ── */
+    const API_URL = "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
+    // Paste the Apps Script portal URL here so scanner can redirect back:
+    const PORTAL_URL = "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
 
-        scanning: false, // rear QR camera active?
-        scanLocked: false, // debounce — blocks re-entry while processing
+    /* ── STATE ── */
+    const APP = {
+      qrScanner:    null,
+      faceScanner:  null,
+      faceStream:   null,
+      faceImageData: null,
+      scanning:     false,
+      scanLocked:   false,
+      mode:         'qr',
+      cameras:      [],
+      cameraIndex:  0, // index into APP.cameras for QR mode
+      _unlockTimer: null,
+      _statsTimer:  null,
+    };
 
-        activeTab: "scanner",
-        scansSession: 0,
-        mode: "qr", // 'qr' | 'face'
-        currentPeriod: "today",
+    /* ── HELPERS ── */
+    const $ = id => document.getElementById(id);
 
-        // Internal timer handles — cleared on new events to prevent races
-        _unlockTimer: null,
-        _statsRefreshTimer: null,
-      };
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
 
-      /* ══════════════════════════════════════════
-   ICON SVG PATHS
-══════════════════════════════════════════ */
-      const ICONS = {
-        idle: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>',
-        spin: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
-        check:
-          '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-        x: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
-        warn: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/>',
-        processing: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
-      };
+    function getDevice() {
+      const ua = navigator.userAgent;
+      const type = /Mobile|Android|iPhone|iPad/i.test(ua) ? 'Mobile' : 'Desktop';
+      const os = /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' :
+                 /Windows/i.test(ua) ? 'Win' : /Mac/i.test(ua) ? 'Mac' : 'Other';
+      return type + ' · ' + os + ' · Vercel';
+    }
 
-      /* ══════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════ */
-      const $ = (id) => document.getElementById(id);
+    let _toastTimer;
+    function showToast(msg, duration) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.remove('show'), duration || 2800);
+    }
 
-      // XSS-safe HTML escape
-      function esc(str) {
-        return String(str ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
+    function _isMobile() {
+      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
 
-      function formatTimestamp(ts) {
-        if (!ts) return "—";
-        const s = String(ts);
-        // Trim seconds from "dd/MM/yyyy HH:mm:ss"
-        if (/\d{2}\/\d{2}\/\d{4}/.test(s))
-          return s.replace(
-            /(\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2}):\d{2}/,
-            "$1 $2",
-          );
-        try {
-          const d = new Date(s);
-          return isNaN(d)
-            ? s
-            : d.toLocaleString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-        } catch (_) {
-          return s;
+    const VIRTUAL_CAM_RE = /obs|virtual|snap|manycam|droidcam|iriun|epoccam|mmhmm|xsplit|ndi|ecamm/i;
+
+    /* ── BACKEND ── */
+    function callBackend(fnName, args, onSuccess, onFail) {
+      fetch(API_URL, {
+        method:'POST', mode:'cors', redirect:'follow',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({ functionName: fnName, args: args }),
+      })
+        .then(r => r.text())
+        .then(text => { const d = JSON.parse(text); if (onSuccess) onSuccess(d); })
+        .catch(err => { console.error('[FETCH]', err); if (onFail) onFail(err); });
+    }
+
+    /* ── STATS ── */
+    function loadStats() {
+      callBackend('getDashboardStats', [], data => {
+        if (data && data.success) {
+          _setText('s-present', data.presentNow ?? '–');
+          _setText('s-scans',   data.scansToday ?? '–');
+          _setText('s-total',   data.totalUsers  ?? '–');
         }
-      }
+      }, null);
+    }
 
-      function getDevice() {
-        const ua = navigator.userAgent;
-        const type = /Mobile|Android|iPhone|iPad/i.test(ua)
-          ? "Mobile"
-          : "Desktop";
-        const os = /Android/i.test(ua)
-          ? "Android"
-          : /iPhone|iPad/i.test(ua)
-            ? "iOS"
-            : /Windows/i.test(ua)
-              ? "Win"
-              : /Mac/i.test(ua)
-                ? "Mac"
-                : "Other";
-        return type + " · " + os;
-      }
+    function _setText(id, val) {
+      const el = $(id);
+      if (el) el.textContent = val;
+    }
 
-      let _toastTimer = null;
-      function showToast(msg, duration) {
-        const t = $("toast");
-        t.textContent = msg;
-        t.classList.add("show");
-        clearTimeout(_toastTimer);
-        _toastTimer = setTimeout(
-          () => t.classList.remove("show"),
-          duration || 2800,
-        );
-      }
+    /* ── STATUS CARD ── */
+    const ICONS = {
+      idle:       '<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>',
+      processing: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+      success:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      error:      '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+      warning:    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/>',
+    };
 
-      /* ══════════════════════════════════════════
-   BACKEND BRIDGE — Works on Vercel + GAS
-   Uses google.script.run inside Apps Script
-   Uses fetch() outside Apps Script
-══════════════════════════════════════════ */
+    const STATE_MAP = { idle:'s-idle', processing:'s-processing', success:'s-success', error:'s-error', warning:'s-warning' };
 
-      const API_URL =
-        "https://script.google.com/macros/s/AKfycbxTC7WK3obS6MG8tR6UggAOgeBAbUnLpora5diJEGaUn6CD9OvVqWQh0PknIRKSsU1L5A/exec";
+    function setStatus(state, title, msg) {
+      const card = $('status-card');
+      card.className = 'status-card ' + (STATE_MAP[state] || 's-idle');
+      $('status-icon').innerHTML = ICONS[state] || ICONS.idle;
+      $('status-title').textContent = title;
+      $('status-msg').textContent = msg;
+      $('user-result').classList.remove('visible');
+    }
 
-      function callBackend(fnName, args = [], onSuccess, onFail) {
-        /* ── If running inside Apps Script HTMLService ── */
-        if (
-          typeof google !== "undefined" &&
-          google.script &&
-          google.script.run
-        ) {
-          google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onFail || ((e) => console.error("[GAS]", e)))
-            [fnName].apply(google.script.run, args);
+    function showUserResult(name, email, action) {
+      $('result-name').textContent  = name  || '—';
+      $('result-email').textContent = email || '—';
+      const b = $('result-badge');
+      b.textContent = action === 'IN' ? '✓ Marked IN' : '✓ Marked OUT';
+      b.className = 'action-badge ' + (action === 'IN' ? 'in' : 'out');
+      $('user-result').classList.add('visible');
+    }
 
-          return;
-        }
+    /* ── ERROR MAP ── */
+    const ERROR_MAP = {
+      INVALID_QR:       { title:'Invalid QR Code',    msg:'This QR is not registered.',           state:'error' },
+      DUPLICATE_BLOCKED:{ title:'Duplicate Blocked',  msg:'Already scanned. Wait a moment.',      state:'warning' },
+      CAMERA_DENIED:    { title:'Camera Denied',      msg:'Allow camera in browser settings.',    state:'error' },
+      NO_CAMERA:        { title:'No Camera Found',    msg:'No camera detected on this device.',   state:'error' },
+      NETWORK_ERROR:    { title:'Network Error',      msg:'Could not reach server.',              state:'error' },
+      SERVER_BUSY:      { title:'Server Busy',        msg:'Too many scans. Retry in a moment.',   state:'warning' },
+      SERVER_ERROR:     { title:'Server Error',       msg:'Internal error. Contact admin.',       state:'error' },
+      CONFIG_ERROR:     { title:'Config Error',       msg:'Sheets not configured correctly.',     state:'error' },
+      UNKNOWN_ERROR:    { title:'Unknown Error',      msg:'An unexpected error occurred.',        state:'error' },
+    };
+    function getErrorUI(code) { return ERROR_MAP[code] || ERROR_MAP.UNKNOWN_ERROR; }
 
-        /* ── If running on Vercel / normal website ── */
-        // External deployed mode (Vercel)
-        fetch(API_URL, {
-          method: "POST",
-          mode: "cors",
-          redirect: "follow",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8",
-          },
-          body: JSON.stringify({
-            functionName: fnName,
-            args: args,
-          }),
-        })
-          .then((res) => res.text())
-          .then((text) => {
-            const data = JSON.parse(text);
-            if (onSuccess) onSuccess(data);
-          })
-          .catch((err) => {
-            console.error("[FETCH]", err);
-            if (onFail) onFail(err);
-          });
-      }
+    /* ── MODE TOGGLE ── */
+    function setMode(mode) {
+      if (APP.mode === mode) return;
+      APP.mode = mode;
+      clearTimeout(APP._unlockTimer);
+      APP.scanLocked = false;
+      stopCamera();
+      resetFaceMode();
+      $('mode-qr-btn').classList.toggle('active', mode === 'qr');
+      $('mode-face-btn').classList.toggle('active', mode === 'face');
+      $('qr-mode-ui').classList.toggle('hidden', mode !== 'qr');
+      $('face-mode-ui').classList.toggle('hidden', mode !== 'face');
+      setStatus('idle','Ready to Scan', mode === 'face' ? 'Start face verification, then scan QR' : 'Enable camera to start scanning');
+    }
 
-      /* ══════════════════════════════════════════
-   ERROR CODE → UI MESSAGE MAP
-══════════════════════════════════════════ */
-      const ERROR_MAP = {
-        INVALID_QR: {
-          title: "Invalid QR Code",
-          msg: "This QR is not registered in the system.",
-          state: "error",
-        },
-        DUPLICATE_BLOCKED: {
-          title: "Duplicate Blocked",
-          msg: "Already scanned recently. Wait before re-scanning.",
-          state: "warning",
-        },
-        USER_NOT_FOUND: {
-          title: "User Not Found",
-          msg: "No matching user in the database.",
-          state: "error",
-        },
-        CAMERA_DENIED: {
-          title: "Camera Access Denied",
-          msg: "Allow camera in browser settings, then reload.",
-          state: "error",
-        },
-        NO_CAMERA: {
-          title: "No Camera Found",
-          msg: "No camera device detected on this device.",
-          state: "error",
-        },
-        NETWORK_ERROR: {
-          title: "Network Error",
-          msg: "Could not reach server. Check connection.",
-          state: "error",
-        },
-        SERVER_BUSY: {
-          title: "Server Busy",
-          msg: "Too many concurrent scans. Retry in a moment.",
-          state: "warning",
-        },
-        CONFIG_ERROR: {
-          title: "Config Error",
-          msg: "Spreadsheet sheets not configured correctly.",
-          state: "error",
-        },
-        SERVER_ERROR: {
-          title: "Server Error",
-          msg: "Internal server error. Contact admin.",
-          state: "error",
-        },
-        UNKNOWN_ERROR: {
-          title: "Unknown Error",
-          msg: "An unexpected error occurred.",
-          state: "error",
-        },
-      };
+    /* ══════════════════════════════════════
+       CAMERA PICKING
+    ══════════════════════════════════════ */
+    function _pickRearCamera(cameras) {
+      const real = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
+      const byLabel = real.find(c => /back|rear|environment/i.test(c.label));
+      if (byLabel) return byLabel;
+      if (_isMobile() && real.length > 1) return real[real.length - 1];
+      return real[0] || cameras[cameras.length - 1];
+    }
 
-      function getErrorUI(code) {
-        return ERROR_MAP[code] || ERROR_MAP.UNKNOWN_ERROR;
-      }
+    function _pickFrontCamera(cameras) {
+      const real = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
+      const byLabel = real.find(c => /front|user|face|selfie/i.test(c.label));
+      if (byLabel) return byLabel;
+      if (_isMobile() && real.length > 1) return real[0];
+      return real[0] || cameras[0];
+    }
 
-      /* ══════════════════════════════════════════
-   CLOCK
-══════════════════════════════════════════ */
-      setInterval(() => {
-        const el = $("stat-time");
-        if (el)
-          el.textContent = new Date().toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          });
-      }, 1000);
+    /* ══════════════════════════════════════
+       QR SCANNER
+    ══════════════════════════════════════ */
+    function startCamera() {
+      $('btn-start').disabled = true;
+      setStatus('processing','Starting Camera…','Requesting camera permission');
+      clearTimeout(APP._unlockTimer);
+      APP.scanLocked = false;
 
-      /* ══════════════════════════════════════════
-   TABS
-══════════════════════════════════════════ */
-      function switchTab(tab) {
-        if (APP.activeTab === tab) return;
-
-        // Clean up cameras + timers on leaving scanner tab
-        if (APP.activeTab === "scanner") {
-          clearTimeout(APP._unlockTimer);
-          clearTimeout(APP._statsRefreshTimer);
-          APP.scanLocked = false;
-          stopCamera();
-          resetFaceMode();
-        }
-
-        APP.activeTab = tab;
-        document
-          .querySelectorAll(".page")
-          .forEach((p) => p.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-btn")
-          .forEach((b) => b.classList.remove("active"));
-        $("page-" + tab).classList.add("active");
-        $("tab-" + tab).classList.add("active");
-
-        // On every tab switch: push current cache immediately, then force-fetch
-        _applyStatsCacheToUI(false);
-
-        if (tab === "dashboard") loadDashboard();
-        if (tab === "reports") { refreshGlobalStats(true); loadReport(); }
-        if (tab === "scanner") refreshGlobalStats(true);
-      }
-
-      /* ══════════════════════════════════════════
-   STATUS CARD
-══════════════════════════════════════════ */
-      function setStatus(state, title, msg) {
-        $("status-card").className = "status-card state-" + state;
-        $("status-icon").innerHTML = ICONS[state] || ICONS.idle;
-        $("status-title").textContent = title;
-        $("status-msg").textContent = msg;
-        $("user-result").classList.remove("visible");
-      }
-
-      function showUserResult(name, email, action) {
-        $("result-name").textContent = name || "—";
-        $("result-email").textContent = email || "—";
-        const b = $("result-badge");
-        b.textContent = action === "IN" ? "✓ Marked IN" : "✓ Marked OUT";
-        b.className = "action-badge " + (action === "IN" ? "in" : "out");
-        $("user-result").classList.add("visible");
-      }
-
-      /* ══════════════════════════════════════════
-   MODE TOGGLE
-══════════════════════════════════════════ */
-      function setMode(mode) {
-        if (APP.mode === mode) return;
-        APP.mode = mode;
-
-        // Cancel pending timers before teardown
-        clearTimeout(APP._unlockTimer);
-        clearTimeout(APP._statsRefreshTimer);
-        APP.scanLocked = false;
-
-        stopCamera();
-        resetFaceMode();
-        $("mode-qr-btn").classList.toggle("active", mode === "qr");
-        $("mode-face-btn").classList.toggle("active", mode === "face");
-        $("qr-mode-ui").classList.toggle("hidden", mode !== "qr");
-        $("face-mode-ui").classList.toggle("hidden", mode !== "face");
-        setStatus(
-          "idle",
-          "Ready to Scan",
-          mode === "face"
-            ? "Press Start — face is captured first, then scan QR"
-            : "Enable camera to start scanning",
-        );
-      }
-
-      /* ══════════════════════════════════════════
-   QR-ONLY SCANNER
-══════════════════════════════════════════ */
-      /* ── Camera routing helpers ── */
-      function _isMobile() {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      }
-
-      const VIRTUAL_CAM_RE = /obs|virtual|snap|manycam|droidcam|iriun|epoccam|mmhmm|xsplit|ndi|ecamm/i;
-
-      function _pickRearCamera(cameras) {
-        // On mobile, labels are blank until after permission — prefer by index
-        // Rear cam is almost always index 1+ (front is 0 on most phones)
-        const realCams = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
-
-        // Label-based first (labels available on desktop / after permission)
-        const byLabel = realCams.find(c =>
-          /back|rear|environment/i.test(c.label)
-        );
-        if (byLabel) return byLabel;
-
-        // On mobile with blank labels: last camera = rear (index heuristic)
-        if (_isMobile() && realCams.length > 1) return realCams[realCams.length - 1];
-
-        // Single real cam or desktop fallback
-        return realCams[0] || cameras[cameras.length - 1];
-      }
-
-      function _pickFrontCamera(cameras) {
-        const realCams = cameras.filter(c => !VIRTUAL_CAM_RE.test(c.label));
-
-        // Label-based
-        const byLabel = realCams.find(c =>
-          /front|user|face|selfie/i.test(c.label)
-        );
-        if (byLabel) return byLabel;
-
-        // On mobile with blank labels: first camera = front
-        if (_isMobile() && realCams.length > 1) return realCams[0];
-
-        return realCams[0] || cameras[0];
-      }
-
-      function startCamera() {
-        $("btn-start").disabled = true;
-        setStatus("processing", "Starting Camera…", "Requesting camera permission");
-
-        // Cancel stale timers from previous session
-        clearTimeout(APP._unlockTimer);
-        clearTimeout(APP._statsRefreshTimer);
-        APP.scanLocked = false;
-
-        // Tear down any existing scanner instance completely
-        if (APP.qrScanner) {
-          const old = APP.qrScanner;
-          APP.qrScanner = null;
-          APP.scanning = false;
-          old.stop().catch(() => {}).finally(() => old.clear().catch(() => {}));
-        }
-
-        // Small delay after teardown before creating new instance
-        setTimeout(() => {
-          APP.qrScanner = new Html5Qrcode("qr-reader");
-
-          if (_isMobile()) {
-            APP.qrScanner.start(
-              { facingMode: { exact: "environment" } },
-              { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
-              onQRSuccess,
-              () => {}
-            )
-            .then(_onQRCameraReady)
-            .catch(() => {
-              if (!APP.qrScanner) return; // was cleared
-              APP.qrScanner.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
-                onQRSuccess,
-                () => {}
-              )
-              .then(_onQRCameraReady)
-              .catch(_onQRCameraError);
-            });
-          } else {
-            Html5Qrcode.getCameras()
-              .then((cameras) => {
-                if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
-                if (!APP.qrScanner) throw { name: "ABORTED" };
-                const cam = _pickRearCamera(cameras);
-                return APP.qrScanner.start(
-                  cam.id,
-                  { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, disableFlip: false },
-                  onQRSuccess,
-                  () => {},
-                );
-              })
-              .then(_onQRCameraReady)
-              .catch((e) => {
-                if (e?.name === "ABORTED") return;
-                _onQRCameraError(e);
-              });
-          }
-        }, APP.scanning ? 300 : 0); // slight delay only if previous was running
-      }
-
-      function _onQRCameraReady() {
-        APP.scanning = true;
-        APP.scanLocked = false; // ensure clean state on each camera start
-        $("scanner-idle").style.display = "none";
-        $("qr-frame").classList.add("scanning");
-        $("btn-start").classList.add("hidden");
-        $("btn-stop").classList.remove("hidden");
-        $("btn-start").disabled = false;
-        setStatus("processing", "Scanning…", "Align QR code within the frame");
-      }
-
-      function _onQRCameraError(err) {
-        const isCameraError = /Permission|NotAllowed|NotFound/i.test(String(err));
-        const isNoCam = err?.name === "NO_CAMERA" || /NotFound/i.test(String(err));
-        const code = isNoCam ? "NO_CAMERA" : isCameraError ? "CAMERA_DENIED" : "UNKNOWN_ERROR";
-        const ui = getErrorUI(code);
-        setStatus(ui.state, ui.title, ui.msg);
-        showToast("✗ " + ui.title);
-        resetQRButtons();
-      }
-
-      function stopCamera() {
-        // Cancel any pending unlock / refresh timers
-        clearTimeout(APP._unlockTimer);
-        clearTimeout(APP._statsRefreshTimer);
-        APP.scanLocked = false;
-
-        if (!APP.qrScanner) {
-          // Nothing to stop — just reset UI
-          APP.scanning = false;
-          $("scanner-idle").style.display = "";
-          $("qr-frame").classList.remove("scanning");
-          $("btn-stop").classList.add("hidden");
-          $("btn-start").classList.remove("hidden");
-          $("btn-start").disabled = false;
-          setStatus("idle", "Ready to Scan", "Enable camera to start scanning QR codes");
-          return;
-        }
-
-        // html5-qrcode .stop() rejects if already stopped — always safe to catch
-        const scanner = APP.qrScanner;
-        APP.qrScanner = null; // null immediately so onQRSuccess calls are dropped
+      // Tear down old instance
+      if (APP.qrScanner) {
+        const old = APP.qrScanner;
+        APP.qrScanner = null;
         APP.scanning = false;
-
-        scanner.stop().catch(() => {}).finally(() => {
-          scanner.clear().catch(() => {});
-          $("scanner-idle").style.display = "";
-          $("qr-frame").classList.remove("scanning");
-          $("btn-stop").classList.add("hidden");
-          $("btn-start").classList.remove("hidden");
-          $("btn-start").disabled = false;
-          setStatus("idle", "Ready to Scan", "Enable camera to start scanning QR codes");
-        });
+        old.stop().catch(()=>{}).finally(()=>old.clear().catch(()=>{}));
       }
 
-      function resetQRButtons() {
-        $("btn-start").disabled = false;
-        $("btn-start").classList.remove("hidden");
-        $("btn-stop").classList.add("hidden");
-      }
+      setTimeout(() => {
+        APP.qrScanner = new Html5Qrcode('qr-reader');
 
-      /* ══════════════════════════════════════════
-   QR DECODE — shared callback for both modes
-   scanLocked prevents double-fire on fast cameras
-══════════════════════════════════════════ */
-      function onQRSuccess(decodedText) {
-        // Bail if scanner was stopped/nulled, or already processing
-        if (!APP.qrScanner && APP.mode === "qr") return;
-        if (APP.scanLocked) return;
-        APP.scanLocked = true;
+        // Load cameras list for flip functionality
+        Html5Qrcode.getCameras().then(cameras => {
+          APP.cameras = cameras || [];
+          // Set initial index to rear cam
+          const rear = _pickRearCamera(APP.cameras);
+          APP.cameraIndex = APP.cameras.indexOf(rear);
+          if (APP.cameraIndex < 0) APP.cameraIndex = 0;
+        }).catch(()=>{ APP.cameras=[]; APP.cameraIndex=0; });
 
-        let userId = decodedText;
-        let secretKey = "";
-
-        // Try to parse JSON payload: { uid, key, portal, v }
-        try {
-          const decoded = decodeURIComponent(decodedText);
-          const parsed = JSON.parse(decoded);
-          if (parsed && parsed.uid) {
-            userId = parsed.uid;
-            secretKey = parsed.key || "";
-          }
-        } catch (_) {
-          // Plain text QR — use as-is
-        }
-
-        if (!userId || !String(userId).trim()) {
-          setStatus("error", "Invalid QR", "Could not read user ID from QR code.");
-          _unlockScanner(2000);
-          return;
-        }
-
-        setStatus("processing", "Verifying…", "Processing ID: " + userId);
-
-        callBackend(
-          "scanEntry",
-          [userId.trim(), secretKey, getDevice(), APP.faceImageData || null],
-          handleScanResult,
-          handleScanError,
-        );
-      }
-
-      /* ══════════════════════════════════════════
-   SCAN RESULT HANDLERS
-══════════════════════════════════════════ */
-
-      // Central unlock: clears the lock and immediately re-arms scanning status
-      function _unlockScanner(resumeDelay) {
-        // Wait resumeDelay ms, then clear lock + restore "Scanning…" UI
-        // Using a named timer so rapid calls cancel the previous one
-        clearTimeout(APP._unlockTimer);
-        APP._unlockTimer = setTimeout(() => {
-          APP.scanLocked = false;
-          // Only restore scanning message if camera is still live
-          if (APP.mode === "qr" && APP.scanning) {
-            setStatus("processing", "Scanning…", "Align QR code within the frame");
-          }
-        }, resumeDelay);
-      }
-
-      // Legacy alias kept so any stray calls still work
-      function unlockAfter(ms) { _unlockScanner(ms); }
-      function resumeScanning() {} // replaced by _unlockScanner — kept as no-op
-
-      function handleScanResult(result) {
-        if (!result) {
-          const ui = getErrorUI("NETWORK_ERROR");
-          setStatus(ui.state, ui.title, ui.msg);
-          _unlockScanner(2500);
-          return;
-        }
-
-        const code = result.code || "";
-
-        /* ── SUCCESS ── */
-        if (code === "IN" || code === "OUT") {
-          APP.scansSession++;
-
-          // 1. Optimistically patch STATS_CACHE from scan response data
-          //    (backend already computed these fresh values)
-          if (result.data) {
-            if (result.data.scansToday !== undefined) {
-              STATS_CACHE.scansToday = result.data.scansToday;
-            }
-            if (result.data.presentNow !== undefined) {
-              STATS_CACHE.presentNow = result.data.presentNow;
-              STATS_CACHE.absentNow  = (STATS_CACHE.totalUsers !== null)
-                ? STATS_CACHE.totalUsers - result.data.presentNow
-                : STATS_CACHE.absentNow;
-            }
-          }
-
-          // 2. Push updated cache to ALL stat elements immediately
-          _applyStatsCacheToUI(false);
-
-          // 3. Show success UI
-          setStatus(
-            "success",
-            code === "IN" ? "✓ Entry Logged – IN" : "✓ Exit Logged – OUT",
-            result.message || "",
-          );
-          showUserResult(result.data?.name, result.data?.email, code);
-          showToast((result.data?.name || "User") + " → " + code);
-
-          // 4. Authoritative full refresh after 1.5 s (let GAS settle)
-          clearTimeout(APP._statsRefreshTimer);
-          APP._statsRefreshTimer = setTimeout(() => {
-            refreshGlobalStats(true);
-            // Also refresh reports if user is watching that tab
-            if (APP.activeTab === "reports") loadReport();
-          }, 1500);
-
-          // 5. Reset scanner for next user
-          if (APP.mode === "face") {
-            // Face mode: full reset after showing success
-            setTimeout(resetFaceMode, 3000);
-          } else {
-            // QR mode: keep camera live, just unlock after cooldown
-            // 2.5 s cooldown — prevents same QR re-firing
-            _unlockScanner(2500);
-          }
-          return;
-        }
-
-        /* ── ERROR / WARNING ── */
-        const ui = getErrorUI(code);
-        setStatus(ui.state, ui.title, result.message || ui.msg);
-        showToast((ui.state === "warning" ? "⚠ " : "✗ ") + ui.title);
-
-        // All error paths: unlock and resume scanning
-        // Duplicate blocked → shorter cooldown; others → standard
-        const cooldown = (code === "DUPLICATE_BLOCKED" || code === "SERVER_BUSY") ? 2000 : 2500;
-        _unlockScanner(cooldown);
-      }
-
-      function handleScanError(err) {
-        const ui = getErrorUI("NETWORK_ERROR");
-        setStatus(
-          ui.state,
-          ui.title,
-          "Failed to reach server. Check connection.",
-        );
-        showToast("✗ Network Error");
-        // Unlock after 3 s — backend may be slow, not crashed
-        _unlockScanner(3000);
-      }
-
-      /* ══════════════════════════════════════════
-   FACE VERIFY MODE — FIXED & CLEAN VERSION
-   - Real capture validation
-   - No fake “Face Captured”
-   - OBS / virtual cam avoided
-   - Removes second QR scan step
-   - Uses already scanned QR / user session
-   - Better reset / cancel flow
-══════════════════════════════════════════ */
-
-      /* START FACE CAPTURE */
-      function startFaceCapture() {
-        $("btn-face-start").disabled = true;
-
-        setStatus(
-          "processing",
-          "Starting Camera…",
-          "Opening front camera for identity snapshot",
-        );
-
-        // Try exact front camera first, then relax constraint if it fails
-        function _startFrontStream(constraints) {
-          return navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
-        }
-
-        function _attachFaceStream(stream) {
-          APP.faceStream = stream;
-          const video = $("face-video");
-          video.srcObject = stream;
-          video.play();
-          $("face-frame").className = "face-frame verifying";
-          $("face-msg").textContent = "Hold still — capturing in 3 seconds…";
-          $("btn-face-start").classList.add("hidden");
-          $("btn-face-stop").classList.remove("hidden");
-          setStatus("processing", "Face Camera Active", "Keep face centred inside the circle");
-          setTimeout(() => {
-            if (!APP.faceStream) return;
-            captureFaceFrame(video);
-          }, 3000);
-        }
-
-        function _faceCameraFail(err) {
-          const isDenied = /Permission|NotAllowed/i.test(String(err));
-          const isNotFound = /NotFound|DevicesNotFound|OverconstrainedError/i.test(String(err));
-          const code = isDenied ? "CAMERA_DENIED" : isNotFound ? "NO_CAMERA" : "UNKNOWN_ERROR";
-          const ui = getErrorUI(code);
-          setStatus(ui.state, ui.title, ui.msg);
-          showToast("✗ " + ui.title);
-          $("btn-face-start").disabled = false;
-        }
-
-        const frontConstraintsExact = _isMobile()
-          ? { facingMode: { exact: "user" }, width: { ideal: 480 }, height: { ideal: 480 } }
-          : { facingMode: "user", width: { ideal: 480 }, height: { ideal: 480 } };
-
-        _startFrontStream(frontConstraintsExact)
-          .then(_attachFaceStream)
-          .catch(() => {
-            // Fallback 1: relax exact constraint
-            _startFrontStream({ facingMode: "user", width: { ideal: 480 }, height: { ideal: 480 } })
-              .then(_attachFaceStream)
-              .catch(() => {
-                // Fallback 2: enumerate and pick front camera by label / index
-                Html5Qrcode.getCameras().then((cameras) => {
-                  if (!cameras || !cameras.length) throw { name: "NO_CAMERA" };
-                  const cam = _pickFrontCamera(cameras);
-                  return _startFrontStream({ deviceId: { exact: cam.id }, width: { ideal: 480 }, height: { ideal: 480 } });
-                })
-                .then(_attachFaceStream)
-                .catch(_faceCameraFail);
-              });
+        if (_isMobile()) {
+          APP.qrScanner.start(
+            { facingMode: { exact: 'environment' } },
+            { fps:15, qrbox:{width:220,height:220}, aspectRatio:1.0, disableFlip:false },
+            onQRSuccess, ()=>{}
+          ).then(_onQRCameraReady).catch(() => {
+            if (!APP.qrScanner) return;
+            APP.qrScanner.start(
+              { facingMode: 'environment' },
+              { fps:15, qrbox:{width:220,height:220}, aspectRatio:1.0, disableFlip:false },
+              onQRSuccess, ()=>{}
+            ).then(_onQRCameraReady).catch(_onQRCameraError);
           });
+        } else {
+          Html5Qrcode.getCameras().then(cameras => {
+            if (!cameras || !cameras.length) throw { name:'NO_CAMERA' };
+            if (!APP.qrScanner) throw { name:'ABORTED' };
+            const cam = _pickRearCamera(cameras);
+            APP.cameraIndex = cameras.indexOf(cam);
+            if (APP.cameraIndex < 0) APP.cameraIndex = 0;
+            return APP.qrScanner.start(cam.id, { fps:15, qrbox:{width:220,height:220}, aspectRatio:1.0 }, onQRSuccess, ()=>{});
+          }).then(_onQRCameraReady).catch(e => {
+            if (e?.name === 'ABORTED') return;
+            _onQRCameraError(e);
+          });
+        }
+      }, APP.scanning ? 300 : 0);
+    }
+
+    function _onQRCameraReady() {
+      APP.scanning = true;
+      APP.scanLocked = false;
+      $('scanner-idle').style.display = 'none';
+      $('qr-frame').classList.add('scanning');
+      $('btn-start').classList.add('hidden');
+      $('btn-stop').classList.remove('hidden');
+      $('btn-flip').classList.remove('hidden');
+      $('btn-start').disabled = false;
+      setStatus('processing','Scanning…','Align QR code within the frame');
+    }
+
+    function _onQRCameraError(err) {
+      const isNoCam    = err?.name==='NO_CAMERA' || /NotFound/i.test(String(err));
+      const isDenied   = /Permission|NotAllowed/i.test(String(err));
+      const code = isNoCam ? 'NO_CAMERA' : isDenied ? 'CAMERA_DENIED' : 'UNKNOWN_ERROR';
+      const ui = getErrorUI(code);
+      setStatus(ui.state, ui.title, ui.msg);
+      showToast('✗ ' + ui.title);
+      resetQRButtons();
+    }
+
+    function stopCamera() {
+      clearTimeout(APP._unlockTimer);
+      APP.scanLocked = false;
+      $('btn-flip').classList.add('hidden');
+
+      if (!APP.qrScanner) {
+        APP.scanning = false;
+        $('scanner-idle').style.display = '';
+        $('qr-frame').classList.remove('scanning');
+        resetQRButtons();
+        setStatus('idle','Ready to Scan','Enable camera to start scanning QR codes');
+        return;
+      }
+      const scanner = APP.qrScanner;
+      APP.qrScanner = null;
+      APP.scanning  = false;
+      scanner.stop().catch(()=>{}).finally(() => {
+        scanner.clear().catch(()=>{});
+        $('scanner-idle').style.display = '';
+        $('qr-frame').classList.remove('scanning');
+        resetQRButtons();
+        setStatus('idle','Ready to Scan','Enable camera to start scanning QR codes');
+      });
+    }
+
+    function resetQRButtons() {
+      $('btn-start').disabled = false;
+      $('btn-start').classList.remove('hidden');
+      $('btn-stop').classList.add('hidden');
+    }
+
+    /* ══════════════════════════════════════
+       FLIP CAMERA
+    ══════════════════════════════════════ */
+    async function flipCamera() {
+      if (!APP.scanning && APP.mode === 'qr') {
+        showToast('Start camera first');
+        return;
       }
 
-      /* CAPTURE FRAME */
-      function captureFaceFrame(video) {
+      let cameras = APP.cameras;
+      if (!cameras || cameras.length === 0) {
+        try { cameras = await Html5Qrcode.getCameras(); APP.cameras = cameras; }
+        catch(e) { showToast('Could not enumerate cameras'); return; }
+      }
+
+      if (!cameras || cameras.length < 2) {
+        showToast('Only one camera detected');
+        return;
+      }
+
+      // Stop current scanner cleanly
+      setStatus('processing','Flipping Camera…','Switching camera…');
+      const old = APP.qrScanner;
+      APP.qrScanner = null;
+      APP.scanning  = false;
+
+      try { await old.stop(); } catch(_) {}
+      try { old.clear(); } catch(_) {}
+
+      // Advance to next camera
+      APP.cameraIndex = (APP.cameraIndex + 1) % cameras.length;
+      const nextCam = cameras[APP.cameraIndex];
+
+      await new Promise(r => setTimeout(r, 300));
+
+      if (APP.mode !== 'qr') return; // user may have switched mode
+
+      APP.qrScanner = new Html5Qrcode('qr-reader');
+      try {
+        await APP.qrScanner.start(
+          nextCam.id,
+          { fps:15, qrbox:{width:220,height:220}, aspectRatio:1.0, disableFlip:false },
+          onQRSuccess, ()=>{}
+        );
+        _onQRCameraReady();
+        showToast('Camera switched');
+      } catch(e) {
+        // Try facingMode toggle as last resort
         try {
-          if (!video.videoWidth || !video.videoHeight) {
-            throw new Error("No live video feed");
-          }
-
-          const canvas = $("face-canvas");
-          const ctx = canvas.getContext("2d");
-
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-
-          ctx.drawImage(video, 0, 0);
-
-          const imgData = canvas.toDataURL("image/jpeg", 0.8);
-
-          /* Validate image exists */
-          if (!imgData || imgData.length < 5000) {
-            throw new Error("Blank capture");
-          }
-
-          APP.faceImageData = imgData;
-
-          /* Show preview */
-          const preview = $("face-preview-canvas");
-          preview.width = canvas.width;
-          preview.height = canvas.height;
-
-          preview.getContext("2d").drawImage(canvas, 0, 0);
-
-          stopFaceStream();
-
-          $("face-frame").className = "face-frame success";
-          $("face-msg").textContent = "Identity snapshot captured successfully";
-
-          setStatus(
-            "success",
-            "Face Captured",
-            "Verification image saved successfully",
-          );
-
-          showToast("✓ Identity Snapshot Ready");
-
-          $("btn-face-stop").classList.add("hidden");
-          $("btn-face-start").classList.remove("hidden");
-          $("btn-face-start").disabled = false;
-          $("btn-face-start").textContent = "Recapture";
-
-          /* IMPORTANT:
-       No second QR scan here.
-       Use already scanned QR flow elsewhere.
-    */
-        } catch (err) {
-          APP.faceImageData = null;
-
-          $("face-frame").className = "face-frame";
-          $("face-msg").textContent = "Could not capture image. Try again.";
-
-          setStatus(
-            "error",
-            "Capture Failed",
-            "Please ensure face is visible and retry.",
-          );
-
-          showToast("✗ Capture Failed");
-
-          $("btn-face-start").disabled = false;
-          $("btn-face-start").classList.remove("hidden");
-          $("btn-face-stop").classList.add("hidden");
-
-          stopFaceStream();
+          const facing = _isMobile()
+            ? { facingMode: APP.cameraIndex === 0 ? 'user' : 'environment' }
+            : { facingMode: 'user' };
+          await APP.qrScanner.start(facing, { fps:15, qrbox:{width:220,height:220}, aspectRatio:1.0 }, onQRSuccess, ()=>{});
+          _onQRCameraReady();
+          showToast('Camera switched');
+        } catch(e2) {
+          _onQRCameraError(e2);
+          showToast('✗ Flip failed — try again');
         }
       }
+    }
 
-      /* CANCEL */
-      function cancelFaceCapture() {
-        stopFaceStream();
+    /* ══════════════════════════════════════
+       QR DECODE CALLBACK
+    ══════════════════════════════════════ */
+    function onQRSuccess(decodedText) {
+      if (!APP.qrScanner && APP.mode === 'qr') return;
+      if (APP.scanLocked) return;
+      APP.scanLocked = true;
 
-        APP.faceImageData = null;
+      let userId = decodedText, secretKey = '';
+      try {
+        const decoded = decodeURIComponent(decodedText);
+        const parsed  = JSON.parse(decoded);
+        if (parsed && parsed.uid) { userId = parsed.uid; secretKey = parsed.key || ''; }
+      } catch(_) {}
 
-        $("face-frame").className = "face-frame";
-
-        $("face-msg").textContent =
-          "Position face in circle — auto-captures in 3s";
-
-        $("btn-face-start").disabled = false;
-        $("btn-face-start").classList.remove("hidden");
-        $("btn-face-stop").classList.add("hidden");
-
-        $("btn-face-start").textContent = "Start Face Verify";
-
-        setStatus("idle", "Ready", "Start face verification when needed");
+      if (!userId || !String(userId).trim()) {
+        setStatus('error','Invalid QR','Could not read user ID from QR code.');
+        _unlockScanner(2000);
+        return;
       }
 
-      /* STOP STREAM */
-      function stopFaceStream() {
-        if (APP.faceStream) {
-          APP.faceStream.getTracks().forEach((t) => t.stop());
-          APP.faceStream = null;
-        }
+      setStatus('processing','Verifying…','Processing ID: ' + userId);
+      callBackend('scanEntry', [userId.trim(), secretKey, getDevice(), APP.faceImageData || null],
+        handleScanResult, handleScanError);
+    }
 
-        const video = $("face-video");
-
-        if (video) {
-          video.pause();
-          video.srcObject = null;
-        }
-      }
-
-      /* RESET MODE */
-      function resetFaceMode() {
-        // Cancel any in-flight timers so they don't re-lock/re-refresh after reset
-        clearTimeout(APP._unlockTimer);
-        clearTimeout(APP._statsRefreshTimer);
-
-        stopFaceStream();
-
-        APP.faceImageData = null;
+    function _unlockScanner(delay) {
+      clearTimeout(APP._unlockTimer);
+      APP._unlockTimer = setTimeout(() => {
         APP.scanLocked = false;
+        if (APP.mode === 'qr' && APP.scanning)
+          setStatus('processing','Scanning…','Align QR code within the frame');
+      }, delay);
+    }
 
-        $("face-frame").className = "face-frame";
+    /* ══════════════════════════════════════
+       SCAN RESULT
+    ══════════════════════════════════════ */
+    function handleScanResult(result) {
+      if (!result) { const ui = getErrorUI('NETWORK_ERROR'); setStatus(ui.state,ui.title,ui.msg); _unlockScanner(2500); return; }
 
-        $("face-msg").textContent =
-          "Position face in circle — auto-captures in 3s";
+      const code = result.code || '';
 
-        $("btn-face-start").disabled = false;
-        $("btn-face-start").classList.remove("hidden");
-        $("btn-face-stop").classList.add("hidden");
-
-        $("btn-face-start").textContent = "Start Face Verify";
-
-        setStatus("idle", "Ready", "Face verification available");
-      }
-
-      /* ══════════════════════════════════════════
-   GLOBAL STATS — single source of truth
-   All tabs read from this cache
-══════════════════════════════════════════ */
-      const STATS_CACHE = {
-        totalUsers: null,
-        presentNow: null,
-        absentNow: null,
-        scansToday: null,
-        portalName: null,
-        recentLogs: null,
-        lastFetched: 0,
-        fetching: false,
-      };
-
-      const STATS_TTL_MS = 12000; // 12s cache TTL — stale after this
-      let _autoRefreshTimer = null;
-
-      /**
-       * Master stats refresh — fetches once, updates ALL stat elements.
-       * Pass force=true to bypass TTL (e.g. right after a scan).
-       * Returns a Promise so callers can await if needed.
-       */
-      function refreshGlobalStats(force) {
-        const now = Date.now();
-
-        // If a fetch is already in flight and it's been >15 s, assume it's stuck
-        if (STATS_CACHE.fetching && (now - STATS_CACHE.lastFetched) > 15000) {
-          STATS_CACHE.fetching = false; // reset stuck flag
+      if (code === 'IN' || code === 'OUT') {
+        // Update mini stats
+        if (result.data) {
+          if (result.data.scansToday !== undefined) _setText('s-scans',   result.data.scansToday);
+          if (result.data.presentNow !== undefined) _setText('s-present', result.data.presentNow);
         }
 
-        if (!force && STATS_CACHE.fetching) return Promise.resolve(STATS_CACHE);
-        if (!force && now - STATS_CACHE.lastFetched < STATS_TTL_MS) {
-          _applyStatsCacheToUI(false);
-          return Promise.resolve(STATS_CACHE);
-        }
+        setStatus('success', code==='IN' ? '✓ Entry Logged – IN' : '✓ Exit Logged – OUT', result.message || '');
+        showUserResult(result.data?.name, result.data?.email, code);
+        showToast((result.data?.name || 'User') + ' → ' + code);
 
-        // If force and another fetch is in flight, let it complete — but track time
-        if (force && STATS_CACHE.fetching) return Promise.resolve(STATS_CACHE);
-
-        STATS_CACHE.fetching = true;
-        STATS_CACHE.lastFetched = now; // mark immediately to prevent parallel calls
-
-        return new Promise((resolve) => {
-          callBackend(
-            "getDashboardStats",
-            [],
-            function (data) {
-              STATS_CACHE.fetching = false;
-              if (!data || !data.success) {
-                _applyStatsCacheToUI(true);
-                resolve(STATS_CACHE);
-                return;
-              }
-              STATS_CACHE.totalUsers  = data.totalUsers  ?? STATS_CACHE.totalUsers;
-              STATS_CACHE.presentNow  = data.presentNow  ?? STATS_CACHE.presentNow;
-              STATS_CACHE.absentNow   = data.absentNow   ?? STATS_CACHE.absentNow;
-              STATS_CACHE.scansToday  = data.scansToday  ?? STATS_CACHE.scansToday;
-              STATS_CACHE.portalName  = data.portalName  || STATS_CACHE.portalName;
-              STATS_CACHE.recentLogs  = data.recentLogs  || STATS_CACHE.recentLogs;
-              _applyStatsCacheToUI(false);
-              resolve(STATS_CACHE);
-            },
-            function () {
-              STATS_CACHE.fetching = false;
-              _applyStatsCacheToUI(true);
-              resolve(STATS_CACHE);
-            }
-          );
-        });
-      }
-
-      /** Push cached stats into every element that shows them */
-      function _applyStatsCacheToUI(isFailed) {
-        const safe = (v) => (v === null || v === undefined ? (isFailed ? "—" : "…") : v);
-
-        // Scanner mini-stats
-        _setText("stat-scans",   safe(STATS_CACHE.scansToday));
-        _setText("stat-present", safe(STATS_CACHE.presentNow));
-
-        // Dashboard cards
-        _setText("ds-total",   safe(STATS_CACHE.totalUsers));
-        _setText("ds-present", safe(STATS_CACHE.presentNow));
-        _setText("ds-absent",  safe(STATS_CACHE.absentNow));
-        _setText("ds-scans",   safe(STATS_CACHE.scansToday));
-
-        DASH_IDS.forEach((id) => {
-          const el = $(id);
-          if (el) el.classList.remove("loading");
-        });
-
-        if (STATS_CACHE.portalName) {
-          _setText("stat-portal",       STATS_CACHE.portalName);
-          _setText("dash-portal-name",  STATS_CACHE.portalName + " · Admin");
-        }
-
-        // Dashboard recent logs list (only when on dashboard tab)
-        if (APP.activeTab === "dashboard" && STATS_CACHE.recentLogs !== null) {
-          _renderDashLogs(STATS_CACHE.recentLogs);
-        }
-      }
-
-      function _setText(id, val) {
-        const el = $(id);
-        if (el) el.textContent = val;
-      }
-
-      function _renderDashLogs(logs) {
-        const list = $("dash-log-list");
-        if (!list) return;
-        if (!logs || !logs.length) {
-          list.innerHTML = '<div class="empty-text">No activity logged yet.</div>';
-          return;
-        }
-        const frag = document.createDocumentFragment();
-        logs.forEach((log) => {
-          const action = String(log.action || "").trim().toUpperCase();
-          const div = document.createElement("div");
-          div.className = "log-item";
-          div.innerHTML =
-            '<span class="log-badge ' + action + '">' + action + "</span>" +
-            '<div style="flex:1;min-width:0">' +
-            '<div class="log-name">' + esc(log.name) + "</div>" +
-            '<div class="log-uid">'  + esc(log.userId) + "</div>" +
-            "</div>" +
-            '<div class="log-time">' + formatTimestamp(log.timestamp) + "</div>";
-          frag.appendChild(div);
-        });
-        list.innerHTML = "";
-        list.appendChild(frag);
-      }
-
-      /** Start auto-refresh every 13 seconds */
-      function _startAutoRefresh() {
-        if (_autoRefreshTimer) return;
-        _autoRefreshTimer = setInterval(() => {
-          if (document.hidden) return; // skip when tab not visible
-          refreshGlobalStats(true);
-          // Also reload reports quietly if on that tab
-          if (APP.activeTab === "reports") loadReport();
-        }, 13000);
-      }
-
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) refreshGlobalStats(true);
-      });
-
-
-
-      const DASH_IDS = ["ds-total", "ds-present", "ds-absent", "ds-scans"];
-
-      function loadDashboard() {
-        // Show loading skeleton only if we have no cached data yet
-        if (STATS_CACHE.totalUsers === null) {
-          DASH_IDS.forEach((id) => {
-            const el = $(id);
-            if (el) { el.textContent = ""; el.classList.add("loading"); }
-          });
-          const ll = $("dash-log-list");
-          if (ll) ll.innerHTML = '<div class="empty-text">Loading…</div>';
-        }
-
-        const errBox = $("dash-error");
-        if (errBox) { errBox.style.display = "none"; errBox.textContent = ""; }
-
-        refreshGlobalStats(true).then((cache) => {
-          if (cache.totalUsers === null && errBox) {
-            errBox.textContent = "⚠ Could not load dashboard. Check connection.";
-            errBox.style.display = "block";
+        // Notify parent portal if in popup/iframe
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type:'SCAN_SUCCESS', data: result.data }, '*');
           }
-        });
-      }
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type:'SCAN_SUCCESS', data: result.data }, '*');
+          }
+        } catch(_) {}
 
+        // Show big success overlay then close
+        _showSuccessOverlay(result.data?.name, code, result.data);
 
-
-      /* ══════════════════════════════════════════
-   REPORTS
-══════════════════════════════════════════ */
-      function setPeriod(p) {
-        APP.currentPeriod = p;
-        ["today", "week", "month"].forEach((x) =>
-          $("rp-" + x).classList.toggle("active", x === p),
-        );
-        loadReport();
-      }
-
-      function loadReport() {
-        const tbody = $("report-tbody");
-        const barChart = $("bar-chart");
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Loading…</td></tr>';
-        ["rp-in", "rp-out", "rp-unique"].forEach((id) => {
-          const el = $(id); if (el) el.textContent = "—";
-        });
-        if (barChart) barChart.innerHTML =
-          '<div class="empty-text" style="padding:0;width:100%;font-size:11px">Loading…</div>';
-
-        callBackend(
-          "getReportData",
-          [APP.currentPeriod],
-          function (data) {
-            if (!data || !data.success) {
-              if (tbody) tbody.innerHTML =
-                '<tr><td colspan="4" class="empty-text">Error: ' +
-                esc(data?.error || "Load failed") + "</td></tr>";
-              return;
-            }
-
-            const logs = data.logs || [];
-            const inCount  = logs.filter((l) => l.action === "IN").length;
-            const outCount = logs.filter((l) => l.action === "OUT").length;
-            const uniqueSet = new Set(logs.map((l) => l.userId));
-
-            _setText("rp-in",     inCount);
-            _setText("rp-out",    outCount);
-            _setText("rp-unique", uniqueSet.size);
-            _setText("report-count", logs.length + " records");
-
-            if (!logs.length) {
-              if (tbody) tbody.innerHTML =
-                '<tr><td colspan="4" class="empty-text">No data for this period.</td></tr>';
-            } else {
-              const frag = document.createDocumentFragment();
-              logs.forEach((log) => {
-                const action = String(log.action || "").toUpperCase();
-                const tr = document.createElement("tr");
-                tr.innerHTML =
-                  "<td><strong>" + esc(log.name) + "</strong><br>" +
-                  '<span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted)">' +
-                  esc(log.userId) + "</span></td>" +
-                  '<td><span class="pill ' +
-                  (action === "IN" ? "pill-green" : "pill-red") + '">' +
-                  action + "</span></td>" +
-                  '<td style="font-family:var(--font-mono);font-size:10px">' +
-                  formatTimestamp(log.timestamp) + "</td>" +
-                  '<td style="font-size:10px;color:var(--text-muted)">' +
-                  esc(log.device || "—") + "</td>";
-                frag.appendChild(tr);
-              });
-              if (tbody) { tbody.innerHTML = ""; tbody.appendChild(frag); }
-            }
-
-            renderBarChart(data.dailyBreakdown || []);
-          },
-          function (err) {
-            if (tbody) tbody.innerHTML =
-              '<tr><td colspan="4" class="empty-text">Failed: ' +
-              esc(err?.message || err) + "</td></tr>";
-          },
-        );
-      }
-
-      function renderBarChart(days) {
-        const chart = $("bar-chart");
-        if (!days || !days.length) {
-          chart.innerHTML =
-            '<div class="empty-text" style="padding:0;width:100%">No chart data</div>';
-          return;
+        if (APP.mode === 'face') {
+          setTimeout(resetFaceMode, 3000);
+        } else {
+          _unlockScanner(2500);
         }
-
-        const max = Math.max(...days.map((d) => (d.in || 0) + (d.out || 0)), 1);
-        const frag = document.createDocumentFragment();
-
-        days.forEach((day) => {
-          const inH = Math.round(((day.in || 0) / max) * 70);
-          const outH = Math.round(((day.out || 0) / max) * 70);
-          const col = document.createElement("div");
-          col.className = "bar-col";
-          col.innerHTML =
-            '<div class="bar in-bar"  style="height:' +
-            inH +
-            'px" title="IN:' +
-            (day.in || 0) +
-            '"></div>' +
-            '<div class="bar out-bar" style="height:' +
-            outH +
-            'px" title="OUT:' +
-            (day.out || 0) +
-            '"></div>' +
-            '<div class="bar-lbl">' +
-            esc(day.label || "-") +
-            "</div>";
-          frag.appendChild(col);
-        });
-
-        chart.innerHTML = "";
-        chart.appendChild(frag);
+        return;
       }
 
-      /* ══════════════════════════════════════════
-   EXPORT CSV
-══════════════════════════════════════════ */
-      function exportCSV() {
-        showToast("Preparing export…", 5000);
-        callBackend(
-          "exportLogsCSV",
-          [],
-          function (res) {
-            if (!res?.success || !res.csv) {
-              showToast("✗ Export failed");
-              return;
-            }
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(
-              new Blob([res.csv], { type: "text/csv" }),
-            );
-            a.download =
-              "scanpass_logs_" + new Date().toISOString().slice(0, 10) + ".csv";
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showToast("✓ CSV exported");
-          },
-          () => showToast("✗ Export failed"),
-        );
+      const ui = getErrorUI(code);
+      setStatus(ui.state, ui.title, result.message || ui.msg);
+      showToast((ui.state==='warning'?'⚠ ':'✗ ') + ui.title);
+      const cooldown = code==='DUPLICATE_BLOCKED'||code==='SERVER_BUSY' ? 2000 : 2500;
+      _unlockScanner(cooldown);
+    }
+
+    function handleScanError(err) {
+      const ui = getErrorUI('NETWORK_ERROR');
+      setStatus(ui.state, ui.title, 'Failed to reach server. Check connection.');
+      showToast('✗ Network Error');
+      _unlockScanner(3000);
+    }
+
+    function _showSuccessOverlay(name, action, data) {
+      const ov = $('success-overlay');
+      $('ov-name').textContent = name || 'User';
+      $('ov-action').textContent = action === 'IN' ? '✓ Marked IN' : '✓ Marked OUT';
+      $('ov-action').className = 'success-action ' + (action === 'IN' ? 'in' : 'out');
+      $('ov-note').textContent = 'Closing scanner in 2s…';
+      ov.classList.add('show');
+
+      setTimeout(() => {
+        ov.classList.remove('show');
+        // Try to close window; fallback to redirect
+        try { window.close(); } catch(_) {}
+        setTimeout(() => {
+          if (!document.hidden) {
+            const portalUrl = PORTAL_URL !== 'YOUR_APPS_SCRIPT_PORTAL_URL_HERE' ? PORTAL_URL : null;
+            if (portalUrl) window.location.href = portalUrl;
+            else $('ov-note').textContent = 'You can close this tab now.';
+          }
+        }, 500);
+      }, 2000);
+    }
+
+    /* ══════════════════════════════════════
+       FACE MODE
+    ══════════════════════════════════════ */
+    function startFaceCapture() {
+      $('btn-face-start').disabled = true;
+      setStatus('processing','Starting Camera…','Opening front camera for identity snapshot');
+
+      const frontExact = _isMobile()
+        ? { facingMode:{exact:'user'}, width:{ideal:480}, height:{ideal:480} }
+        : { facingMode:'user', width:{ideal:480}, height:{ideal:480} };
+
+      function _attach(stream) {
+        APP.faceStream = stream;
+        const video = $('face-video');
+        video.srcObject = stream; video.play();
+        $('face-frame').className = 'face-frame verifying';
+        $('face-msg').textContent = 'Hold still — capturing in 3 seconds…';
+        $('btn-face-start').classList.add('hidden');
+        $('btn-face-stop').classList.remove('hidden');
+        setStatus('processing','Face Camera Active','Keep face centred inside the circle');
+        setTimeout(() => { if (APP.faceStream) captureFaceFrame(video); }, 3000);
       }
 
-      /* ── Init ── */
-      window.addEventListener("load", () => {
-        setStatus(
-          "idle",
-          "Ready to Scan",
-          "Enable camera to start scanning QR codes",
-        );
-        // Pre-load stats so scanner mini-stats show immediately
-        refreshGlobalStats(true);
-        _startAutoRefresh();
-      });
+      function _fail(err) {
+        const isDenied  = /Permission|NotAllowed/i.test(String(err));
+        const isNoCam   = /NotFound|DevicesNotFound|OverconstrainedError/i.test(String(err));
+        const ui = getErrorUI(isNoCam ? 'NO_CAMERA' : isDenied ? 'CAMERA_DENIED' : 'UNKNOWN_ERROR');
+        setStatus(ui.state, ui.title, ui.msg);
+        showToast('✗ ' + ui.title);
+        $('btn-face-start').disabled = false;
+      }
+
+      navigator.mediaDevices.getUserMedia({ video: frontExact, audio: false })
+        .then(_attach)
+        .catch(() => navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:480}, height:{ideal:480} }, audio:false })
+          .then(_attach)
+          .catch(() => Html5Qrcode.getCameras()
+            .then(cameras => {
+              const front = _pickFrontCamera(cameras);
+              if (!front) throw new Error('no front cam');
+              return navigator.mediaDevices.getUserMedia({ video:{ deviceId:{ exact:front.id } }, audio:false });
+            })
+            .then(_attach)
+            .catch(_fail)));
+    }
+
+    function captureFaceFrame(video) {
+      if (!APP.faceStream) return;
+      const canvas = $('face-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth || 480;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      APP.faceImageData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+
+      // Stop face stream
+      APP.faceStream.getTracks().forEach(t => t.stop());
+      APP.faceStream = null;
+
+      // Copy face preview
+      const prev = $('face-preview-canvas');
+      prev.width = canvas.width; prev.height = canvas.height;
+      prev.getContext('2d').drawImage(canvas, 0, 0);
+
+      $('face-step-1').classList.add('hidden');
+      $('face-step-2').classList.remove('hidden');
+
+      setStatus('processing','Face Captured','Now scan the QR code to complete verification');
+      showToast('✓ Face captured — scan QR now');
+
+      // Start QR scan for face mode
+      APP.faceScanner = new Html5Qrcode('qr-reader-face');
+      if (_isMobile()) {
+        APP.faceScanner.start({ facingMode:{exact:'environment'} }, { fps:15, qrbox:{width:180,height:180} }, onQRSuccess, ()=>{})
+          .catch(() => APP.faceScanner?.start({ facingMode:'environment' }, { fps:15, qrbox:{width:180,height:180} }, onQRSuccess, ()=>{}));
+      } else {
+        Html5Qrcode.getCameras().then(cams => {
+          const cam = _pickRearCamera(cams);
+          return APP.faceScanner?.start(cam.id, { fps:15, qrbox:{width:180,height:180} }, onQRSuccess, ()=>{});
+        }).catch(() => {});
+      }
+    }
+
+    function cancelFaceCapture() {
+      if (APP.faceStream) { APP.faceStream.getTracks().forEach(t=>t.stop()); APP.faceStream = null; }
+      $('btn-face-start').disabled = false;
+      $('btn-face-start').classList.remove('hidden');
+      $('btn-face-stop').classList.add('hidden');
+      $('face-frame').className = 'face-frame';
+      $('face-msg').textContent = 'Position face in circle — auto-captures in 3s';
+      setStatus('idle','Ready to Scan','Press Start — face is captured first, then scan QR');
+    }
+
+    function resetFaceMode() {
+      if (APP.faceStream) { APP.faceStream.getTracks().forEach(t=>t.stop()); APP.faceStream = null; }
+      if (APP.faceScanner) {
+        const s = APP.faceScanner; APP.faceScanner = null;
+        s.stop().catch(()=>{}).finally(()=>s.clear().catch(()=>{}));
+      }
+      APP.faceImageData = null;
+      $('face-step-1').classList.remove('hidden');
+      $('face-step-2').classList.add('hidden');
+      $('face-frame').className = 'face-frame';
+      $('face-msg').textContent = 'Position face in circle — auto-captures in 3s';
+      $('btn-face-start').disabled = false;
+      $('btn-face-start').classList.remove('hidden');
+      $('btn-face-stop').classList.add('hidden');
+      setStatus('idle','Ready to Scan','Press Start — face is captured first, then scan QR');
+    }
+
+    /* ── INIT ── */
+    window.addEventListener('load', () => {
+      setStatus('idle','Ready to Scan','Enable camera to start scanning QR codes');
+      loadStats();
+      // Refresh stats every 30s while scanner is open
+      APP._statsTimer = setInterval(loadStats, 30000);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      clearInterval(APP._statsTimer);
+    });
     </script>
   </body>
 </html>
